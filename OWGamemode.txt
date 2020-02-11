@@ -1,0 +1,4537 @@
+variables
+{
+	global:
+		0: DebugEnabled
+		1: CliffKnockbackBotsPos
+		2: MovingBotsPos
+		3: ShieldReinPos
+		4: JumpPadNumber
+		5: JumpPadPos
+		6: SombraUltimatePos
+		7: PharahCompressionBlastPos
+		8: ShortCooldownsEnabled
+		9: ServerLoadText
+		10: CharacterIsSetUpGlobal
+		11: JumpPadsEnabled
+		50: antiCrashActivated
+
+	player:
+		0: HudText
+		1: IsUsingAbility
+		2: AbilityCooldowns
+		3: AbilityVariables
+		4: AbilityEffects
+		5: AbilityVariableChase_I
+		6: AbilityVariableChase_II
+}
+
+rule("========================[] GAMEMODE RULES")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Characters Set Up List")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Set Global Variable(CharacterIsSetUpGlobal, Empty Array);
+		Modify Global Variable(CharacterIsSetUpGlobal, Append To Array, Hero(Ashe));
+		Modify Global Variable(CharacterIsSetUpGlobal, Append To Array, Hero(Bastion));
+		Modify Global Variable(CharacterIsSetUpGlobal, Append To Array, Hero(McCree));
+		Modify Global Variable(CharacterIsSetUpGlobal, Append To Array, Hero(Pharah));
+		Modify Global Variable(CharacterIsSetUpGlobal, Append To Array, Hero(Sombra));
+		Modify Global Variable(CharacterIsSetUpGlobal, Append To Array, Hero(Lúcio));
+		Modify Global Variable(CharacterIsSetUpGlobal, Append To Array, Hero(Hanzo));
+	}
+}
+
+rule("Pre-Game All Heroes Availability Set")
+{
+	event
+	{
+		Player Joined Match;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Waiting For Players == True;
+	}
+
+	actions
+	{
+		Set Player Allowed Heroes(Event Player, All Heroes);
+	}
+}
+
+rule("Game Start Hero Availability Set")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Or(Is Assembling Heroes, Is Game In Progress) == True;
+	}
+
+	actions
+	{
+		Wait(0.017, Ignore Condition);
+		Set Player Allowed Heroes(All Players(All Teams), Global Variable(CharacterIsSetUpGlobal));
+	}
+}
+
+rule("Character Not Implemented Warning")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Array Contains(Global Variable(CharacterIsSetUpGlobal), Hero Of(Event Player)) != True;
+		Has Spawned(Event Player) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Big Message(Event Player, Custom String("{0} CHARACTER NOT IMPLEMENTED YET {0}", Icon String(Warning), Null, Null));
+		Play Effect(Event Player, Debuff Impact Sound, White, Event Player, 200);
+		Wait(4, Ignore Condition);
+		Big Message(Event Player, Custom String("{0} BUGS AND ERRORS ARE LIKLEY {0}", Icon String(Warning), Null, Null));
+		Play Effect(Event Player, Debuff Impact Sound, White, Event Player, 200);
+		Wait(4, Ignore Condition);
+		Big Message(Event Player, Custom String("{0} CHARACTER LOCKED ON GAME START {0}", Icon String(Warning), Null, Null));
+		Play Effect(Event Player, Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("Setup = 15 seconds")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Kill(All Players(All Teams), Null);
+		Set Match Time(3);
+	}
+}
+
+rule("Reset ult charge on spawn (excluding characters that start with ultimate)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		disabled Hero Of(Event Player) != Hero(Genji);
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, 0);
+	}
+}
+
+rule("Status Effects Reset Upon Death")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	actions
+	{
+		Clear Status(Event Player, Hacked);
+		Clear Status(Event Player, Burning);
+		Clear Status(Event Player, Knocked Down);
+		Clear Status(Event Player, Asleep);
+		Clear Status(Event Player, Frozen);
+		Clear Status(Event Player, Unkillable);
+		Clear Status(Event Player, Invincible);
+		Clear Status(Event Player, Phased Out);
+		Clear Status(Event Player, Rooted);
+		Clear Status(Event Player, Stunned);
+	}
+}
+
+rule("Crouch + Interact = Reload Custom HUD & Show Info")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Button Held(Event Player, Interact) == True;
+		Is Button Held(Event Player, Crouch) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, HudText, 0, Null);
+	}
+}
+
+rule("anti crash")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global Variable(antiCrashActivated) == False;
+		Server Load > 200;
+	}
+
+	actions
+	{
+		Wait(0.300, Abort When False);
+		Small Message(All Players(All Teams), Custom String("Anti crash system activated", Null, Null, Null));
+		Set Slow Motion(10);
+		Set Global Variable(antiCrashActivated, True);
+		Wait(4, Abort When False);
+		Loop If Condition Is True;
+	}
+}
+
+rule("disable anti crash")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global Variable(antiCrashActivated) == True;
+		Server Load < 175;
+	}
+
+	actions
+	{
+		Set Slow Motion(100);
+		Set Global Variable(antiCrashActivated, False);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("========================[] TOGGLES")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("[Enable Debug]")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Set Global Variable(DebugEnabled, True);
+	}
+}
+
+disabled rule("[Enable Short Cooldowns On Custom Abilities] (Enabled by debug mode)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global Variable(DebugEnabled) == True;
+	}
+
+	actions
+	{
+		Set Global Variable(ShortCooldownsEnabled, True);
+	}
+}
+
+rule("[Enable Jump Pads] (disabled by debug mode)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global Variable(DebugEnabled) == Null;
+	}
+
+	actions
+	{
+		Set Global Variable(JumpPadsEnabled, True);
+	}
+}
+
+rule("[Enable Anti-Crash]")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Set Global Variable(antiCrashActivated, False);
+	}
+}
+
+rule("[Enable ServerLoadCheck]")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Set Global Variable(ServerLoadText, True);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("========================[] PER HERO STATS")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("==============[] INFO")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Per-Hero Info Notification")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	actions
+	{
+		Create HUD Text(All Players(All Teams), Null, Null, Custom String("Say ''Group Up!'' for per-hero info (Use ''C'')", Null, Null,
+			Null), Right, -100.000, White, White, White, Visible To and String, Visible Never);
+	}
+}
+
+rule("Ashe Info")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ashe;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Communicating(Event Player, Group Up) == True;
+	}
+
+	actions
+	{
+		Small Message(Event Player, Custom String("Coach Jump (Ability 1) allows you to shoot twice for a short time {0}",
+			Hero Icon String(Hero(Ashe)), Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Coach Jump has less knockback unless shooting one target twice {0}", Hero Icon String(
+			Hero(Ashe)), Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Flashfreeze (Ability 2) freezes enemies for a short time {0}", Hero Icon String(Hero(
+			Ashe)), Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Enemies affected by Flashfreeze cannot be damaged {0}", Hero Icon String(Hero(Ashe)),
+			Null, Null));
+	}
+}
+
+rule("Bastion Info")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Communicating(Event Player, Group Up) == True;
+	}
+
+	actions
+	{
+		Small Message(Event Player, Custom String("Turret Form has limited ammo {0}", Hero Icon String(Hero(Bastion)), Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Can only transform into Turret Form at 100% ammo {0}", Hero Icon String(Hero(Bastion)),
+			Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Holding Jump in Turret Form moves you forward! {0}", Hero Icon String(Hero(Bastion)),
+			Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Self-heal is strong, but roots you in place {0}", Hero Icon String(Hero(Bastion)), Null,
+			Null));
+	}
+}
+
+rule("McCree Info")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Communicating(Event Player, Group Up) == True;
+	}
+
+	actions
+	{
+		Small Message(Event Player, Custom String("Your shots have a cooldown, however all abilities reset the cooldown {0}",
+			Hero Icon String(Hero(McCree)), Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Headshots also reduce the cooldown {0}", Hero Icon String(Hero(McCree)), Null, Null));
+	}
+}
+
+rule("Sombra Info")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Communicating(Event Player, Group Up) == True;
+	}
+
+	actions
+	{
+		Small Message(Event Player, Custom String("Short Circut (Ability 2) acts as a Mini-EMP {0}", Hero Icon String(Hero(Sombra)), Null,
+			Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Data Transfer (Secondary fire) lets you teleport forward 15 meters {0}",
+			Hero Icon String(Hero(Sombra)), Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Blackout (Ultimate) hacks and roots players inside, and acts as area denial {0}",
+			Hero Icon String(Hero(Sombra)), Null, Null));
+	}
+}
+
+rule("Lucio Info")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Lúcio;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Communicating(Event Player, Group Up) == True;
+	}
+
+	actions
+	{
+		Small Message(Event Player, Custom String("Heal song is replaced with a damage boost song {0}", Hero Icon String(Hero(Lúcio)),
+			Null, Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("Subwoofer Blowout (Ultimate) knocks enemies within your song radius upward! {0}",
+			Hero Icon String(Hero(Lúcio)), Null, Null));
+	}
+}
+
+rule("Hanzo Info")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Communicating(Event Player, Group Up) == True;
+	}
+
+	actions
+	{
+		Small Message(Event Player, Custom String("Storm Arrows pierce through a (thin) wall {0}", Hero Icon String(Hero(Hanzo)), Null,
+			Null));
+		Wait(2, Ignore Condition);
+		Small Message(Event Player, Custom String("The piercing effect also applies to anyone shot directly {0}", Hero Icon String(Hero(
+			Hanzo)), Null, Null));
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("==============[] GENERAL")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Initialize EVERY Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Has Spawned(Event Player) == True;
+		Is In Spawn Room(Event Player) != True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.016), Ignore Condition);
+		Set Player Variable At Index(Event Player, HudText, 0, Null);
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 1, 0);
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 2, 0);
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 3, 0);
+		Set Player Variable(Event Player, AbilityVariableChase_I, Null);
+		Set Player Variable(Event Player, AbilityVariableChase_II, Null);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 2, False);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 3, False);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 4, False);
+		Set Primary Fire Enabled(Event Player, True);
+		Set Secondary Fire Enabled(Event Player, True);
+		Set Ability 1 Enabled(Event Player, True);
+		Set Ability 2 Enabled(Event Player, True);
+		Set Ultimate Ability Enabled(Event Player, True);
+		Allow Button(Event Player, Primary Fire);
+		Allow Button(Event Player, Secondary Fire);
+		Allow Button(Event Player, Ability 1);
+		Allow Button(Event Player, Ability 2);
+		Allow Button(Event Player, Ultimate);
+		Set Max Health(Event Player, 100);
+		Set Damage Dealt(Event Player, 100);
+		Set Damage Received(Event Player, 100);
+		Set Healing Dealt(Event Player, 100);
+	}
+}
+
+rule("EVERY HUD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+		Array Contains(Global Variable(CharacterIsSetUpGlobal), Hero Of(Event Player)) == True;
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 1));
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 2));
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 3));
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 4));
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 5));
+	}
+}
+
+rule("Ability 1 Cooldown")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 1) > 0;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) != True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Value In Array(Player Variable(Event Player, AbilityCooldowns), 1), ==, 0), 4);
+		Wait(1, Abort When False);
+		Abort If Condition Is False;
+		Modify Player Variable At Index(Event Player, AbilityCooldowns, 1, Subtract, 1);
+		Loop If Condition Is True;
+		Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
+	}
+}
+
+rule("Ability 2 Cooldown")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 2) > 0;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 2) != True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Value In Array(Player Variable(Event Player, AbilityCooldowns), 2), ==, 0), 4);
+		Wait(1, Abort When False);
+		Abort If Condition Is False;
+		Modify Player Variable At Index(Event Player, AbilityCooldowns, 2, Subtract, 1);
+		Loop If Condition Is True;
+		Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
+	}
+}
+
+rule("Ability 3 Cooldown")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 3) > 0;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 3) != True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Value In Array(Player Variable(Event Player, AbilityCooldowns), 3), ==, 0), 4);
+		Wait(1, Abort When False);
+		Abort If Condition Is False;
+		Modify Player Variable At Index(Event Player, AbilityCooldowns, 3, Subtract, 1);
+		Loop If Condition Is True;
+		Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("==============[] Ashe")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Initialize Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ashe;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.017), Ignore Condition);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 2);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Multiply(Max Health(Event Player), 100));
+	}
+}
+
+rule("HUD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ashe;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Create HUD Text(Filtered Array(Filtered Array(Event Player, Compare(Value In Array(Player Variable(Event Player, AbilityVariables),
+			1), ==, 0)), Compare(Hero Of(Event Player), ==, Hero(Ashe))), Value In Array(Player Variable(Event Player, AbilityCooldowns),
+			1), Custom String("Ability 1: Cooldown", Null, Null, Null), Custom String("Coach Jump", Null, Null, Null), Left, -3.000, Red,
+			Red, Red, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Create HUD Text(Filtered Array(Filtered Array(Event Player, Compare(Value In Array(Player Variable(Event Player, AbilityVariables),
+			1), !=, 0)), Compare(Hero Of(Event Player), ==, Hero(Ashe))), Value In Array(Player Variable(Event Player, AbilityVariables),
+			1), Custom String("Ability 1: Ammo Remaining", Null, Null, Null), Custom String("Coach Jump", Null, Null, Null), Left, -3.000,
+			White, Red, White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Set Player Variable At Index(Event Player, HudText, 0, True);
+	}
+}
+
+rule("Ashe Scope Damage")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ashe;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, Multiply(Divide(45, 72.250), 100));
+	}
+}
+
+rule("Ashe Scope Reset Damage")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ashe;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) != True;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, 100);
+	}
+}
+
+rule("Ashe Ability 2 Freeze")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Hero Of(Attacker) == Hero(Ashe);
+		Has Status(Victim, Burning) == True;
+		Is Firing Primary(Attacker) == False;
+		Is Using Ability 1(Attacker) == False;
+	}
+
+	actions
+	{
+		Set Status(Victim, Null, Frozen, 2.500);
+		Set Status(Event Player, Null, Invincible, 2.500);
+		Wait(6, Ignore Condition);
+	}
+}
+
+rule("Ashe Coach Gun (With Ammo)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ashe;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+		Value In Array(Player Variable(Event Player, AbilityVariables), 1) >= 1;
+	}
+
+	actions
+	{
+		Modify Player Variable At Index(Event Player, AbilityVariables, 1, Subtract, 1);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, True);
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 1, 10);
+		Wait(2.250, Restart When True);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Abort If(Compare(Is Dead(Event Player), ==, True));
+		Abort If(Compare(Value In Array(Player Variable(Event Player, AbilityVariables), 1), ==, 0));
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 0);
+	}
+}
+
+rule("Ashe Coach Gun (Out of Ammo)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ashe;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityVariables), 1) == 0;
+	}
+
+	actions
+	{
+		Wait(0.016, Abort When False);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Wait(0.200, Ignore Condition);
+		Set Ability 1 Enabled(Event Player, False);
+	}
+}
+
+rule("Ashe Coach Gun (Cooldown at 0 = Reset Ability Stats)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ashe;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 1) == 0;
+	}
+
+	actions
+	{
+		Set Ability 1 Enabled(Event Player, True);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 2);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("==============[] Bastion")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Initialize Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.017), Ignore Condition);
+		Set Max Health(Event Player, Multiply(Divide(400, 300), 100));
+		Set Player Variable(Event Player, AbilityVariableChase_I, 100);
+		Create Effect(Filtered Array(Players Within Radius(Eye Position(Event Player), 1000, All Teams, Surfaces), Compare(
+			Is Firing Secondary(Event Player), ==, True)), Light Shaft, Yellow, Position Of(Event Player), 1,
+			Visible To Position and Radius);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Multiply(Max Health(Event Player), 100));
+	}
+}
+
+rule("HUD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Create HUD Text(Filtered Array(Event Player, Compare(Hero Of(Event Player), ==, Hero(Bastion))), Custom String("{0}%",
+			Round To Integer(Player Variable(Event Player, AbilityVariableChase_I), To Nearest), Null, Null), Custom String(
+			"Ability 1: Ammunition Remaining", Null, Null, Null), Custom String("Mobile Turret", Null, Null, Null), Left, -3.000, White,
+			Lime Green, White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Set Player Variable At Index(Event Player, HudText, 0, True);
+	}
+}
+
+rule("Turret Ammo Regen")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == False;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Chase Player Variable At Rate(Event Player, AbilityVariableChase_I, 100, 6.250, None);
+	}
+}
+
+rule("Turret Ability (Entering Turret)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == False;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Ability 1);
+		Set Ability 1 Enabled(Event Player, False);
+		Wait(0.016, Ignore Condition);
+		Loop If(Compare(Is Using Ability 1(Event Player), ==, True));
+		Set Move Speed(Event Player, 50);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, True);
+		Disallow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, False);
+		Allow Button(Event Player, Ability 1);
+		Set Ability 1 Enabled(Event Player, True);
+	}
+}
+
+rule("Turret Ability (Leaving Turret)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Ability 1);
+		Set Ability 1 Enabled(Event Player, False);
+		Wait(0.016, Ignore Condition);
+		Loop If(Compare(Is Using Ability 1(Event Player), ==, True));
+		Set Move Speed(Event Player, 100);
+		Set Damage Dealt(Event Player, 100);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Allow Button(Event Player, Ability 1);
+		Set Ability 1 Enabled(Event Player, True);
+	}
+}
+
+rule("Turret Ability (Low Ammo Locks Abillity)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Player Variable(Event Player, AbilityVariableChase_I) != 100;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == False;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Ability 1);
+		Wait(0.016, Ignore Condition);
+		Set Ability 1 Enabled(Event Player, False);
+	}
+}
+
+rule("Ulting (out of turret mode)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Using Ultimate(Event Player) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == False;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Status(Event Player, Null, Rooted, 6.600);
+		Set Damage Dealt(Event Player, Multiply(Divide(300, 102.500), 100));
+		Stop Accelerating(Event Player);
+		Disallow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, False);
+		Wait(5.500, Ignore Condition);
+		Allow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, True);
+		Abort If(Compare(Is Alive(Event Player), ==, False));
+		Set Damage Dealt(Event Player, 100);
+	}
+}
+
+rule("Ulting (in turret mode)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Is Using Ultimate(Event Player) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Ability 1);
+		Set Move Speed(Event Player, 100);
+		Set Damage Dealt(Event Player, 100);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Wait(0.016, Ignore Condition);
+		Set Status(Event Player, Null, Rooted, 6.600);
+		Set Damage Dealt(Event Player, Multiply(Divide(300, 102.500), 100));
+		Stop Accelerating(Event Player);
+		Disallow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, False);
+		Wait(5.500, Ignore Condition);
+		Abort If(Compare(Is Alive(Event Player), ==, False));
+		Set Damage Dealt(Event Player, 100);
+		Allow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, True);
+	}
+}
+
+rule("turret unlock on cooldown finish")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Player Variable(Event Player, AbilityVariableChase_I) == 100;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Allow Button(Event Player, Ability 1);
+		Set Ability 1 Enabled(Event Player, True);
+		Stop Chasing Player Variable(Event Player, AbilityVariableChase_I);
+	}
+}
+
+rule("Turret Ammo Usage")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Chase Player Variable At Rate(Event Player, AbilityVariableChase_I, 0, 20, None);
+	}
+}
+
+rule("Ammo Stop Using")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) != True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Stop Chasing Player Variable(Event Player, AbilityVariableChase_I);
+	}
+}
+
+rule("auto-transform out of ammo")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Player Variable(Event Player, AbilityVariableChase_I) == 0;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Press Button(Event Player, Ability 1);
+	}
+}
+
+rule("Movement by pressing Jump (Enable)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Jump) == True;
+		Is Alive(Event Player) == True;
+		Has Status(Event Player, Frozen) == False;
+		Has Status(Event Player, Knocked Down) == False;
+		Has Status(Event Player, Hacked) == False;
+		Has Status(Event Player, Stunned) == False;
+		Has Status(Event Player, Asleep) == False;
+		Is Using Ultimate(Event Player) == False;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+	}
+
+	actions
+	{
+		Start Accelerating(Event Player, Forward, 1000, 60, To Player, Direction Rate and Max Speed);
+	}
+}
+
+rule("Movement by pressing Jump (Disable)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Jump) == False;
+	}
+
+	actions
+	{
+		Stop Accelerating(Event Player);
+	}
+}
+
+rule("movement stop on transform")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Stop Accelerating(Event Player);
+	}
+}
+
+rule("(Knock Down Cooldown Fix)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Has Status(Event Player, Knocked Down) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 100);
+		Set Damage Dealt(Event Player, 100);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Allow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, True);
+		Stop Accelerating(Event Player);
+	}
+}
+
+rule("(Sleep Cooldown Fix)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Has Status(Event Player, Asleep) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 100);
+		Set Damage Dealt(Event Player, 100);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Allow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, True);
+		Stop Accelerating(Event Player);
+	}
+}
+
+rule("(Hack Cooldown Fix)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Has Status(Event Player, Hacked) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 100);
+		Set Damage Dealt(Event Player, 100);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Allow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, True);
+		Stop Accelerating(Event Player);
+	}
+}
+
+rule("(Roadhog Hook Fix)")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Has Status(Event Player, Stunned) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Hero Of(Attacker) == Hero(Roadhog);
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+		Set Move Speed(Event Player, 100);
+		Set Damage Dealt(Event Player, 100);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Allow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, True);
+		Stop Accelerating(Event Player);
+	}
+}
+
+rule("Movement (Dead)")
+{
+	event
+	{
+		Player Died;
+		All;
+		Bastion;
+	}
+
+	actions
+	{
+		Stop Accelerating(Event Player);
+	}
+}
+
+rule("Omega Heal (Firing Secondary)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Status(Event Player, Null, Rooted, 9999);
+		Set Damage Received(Event Player, 75);
+	}
+}
+
+rule("Omega Heal (Stopping Secondary)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) != True;
+	}
+
+	actions
+	{
+		Clear Status(Event Player, Rooted);
+		Set Damage Received(Event Player, 100);
+	}
+}
+
+rule("Omega Heal (100% HP upon healing)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) == True;
+		Normalized Health(Event Player) >= 1;
+		Is Using Ultimate(Event Player) == False;
+	}
+
+	actions
+	{
+		Press Button(Event Player, Secondary Fire);
+		Wait(0.016, Ignore Condition);
+		Disallow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, False);
+	}
+}
+
+rule("Omega Heal (100% HP Not Healing)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) == False;
+		Normalized Health(Event Player) >= 1;
+		Is Using Ultimate(Event Player) == False;
+	}
+
+	actions
+	{
+		Disallow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, False);
+	}
+}
+
+rule("Omega Heal (> 100% HP)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Normalized Health(Event Player) != 1;
+		Is Using Ultimate(Event Player) == False;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == False;
+	}
+
+	actions
+	{
+		Allow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, True);
+	}
+}
+
+rule("Omega Heal (Leaving Turret Mode)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Bastion;
+	}
+
+	conditions
+	{
+		Normalized Health(Event Player) != 1;
+		Is Using Ultimate(Event Player) == False;
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Allow Button(Event Player, Secondary Fire);
+		Set Secondary Fire Enabled(Event Player, True);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("==============[] McCree")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Initialize Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.017), Ignore Condition);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 0);
+		Set Player Variable At Index(Event Player, AbilityVariables, 2, True);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Multiply(Max Health(Event Player), 100));
+	}
+}
+
+rule("HUD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+	}
+
+	actions
+	{
+		Wait(0.016, Restart When True);
+		Create HUD Text(Filtered Array(Filtered Array(Event Player, Compare(Hero Of(Event Player), ==, Hero(McCree))), Compare(
+			Value In Array(Player Variable(Event Player, AbilityVariables), 1), !=, 0)), Round To Integer(Value In Array(Player Variable(
+			Event Player, AbilityVariables), 1), Up), Custom String("Primary/Secondary Fire: Reloading...", Null, Null, Null),
+			Custom String("Peacemaker", Null, Null, Null), Left, -3.000, Red, Red, Red, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Create HUD Text(Filtered Array(Filtered Array(Event Player, Compare(Hero Of(Event Player), ==, Hero(McCree))), Compare(
+			Value In Array(Player Variable(Event Player, AbilityVariables), 1), ==, 0)), Icon String(Checkmark), Custom String(
+			"Primary/Secondary Fire: Loaded", Null, Null, Null), Custom String("Peacemaker", Null, Null, Null), Left, -3.000, White, Red,
+			White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Set Player Variable At Index(Event Player, HudText, 0, True);
+	}
+}
+
+rule("Primary Fire Start Reload/Stats")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 1);
+	}
+}
+
+rule("Secondary Fire Start Reload/Stats")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) == True;
+		Value In Array(Player Variable(Event Player, AbilityVariables), 1) == 0;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 2.800);
+		Set Ability 1 Enabled(Event Player, False);
+		Set Ability 2 Enabled(Event Player, False);
+		Disallow Button(Event Player, Ultimate);
+		Wait(0.275, Ignore Condition);
+		Set Status(Event Player, Null, Stunned, 0.050);
+		Set Ability 1 Enabled(Event Player, True);
+		Set Ability 2 Enabled(Event Player, True);
+		Allow Button(Event Player, Ultimate);
+		Abort If(Compare(Value In Array(Player Variable(Event Player, AbilityCooldowns), 1), ==, 0));
+		Set Secondary Fire Enabled(Event Player, False);
+		Disallow Button(Event Player, Secondary Fire);
+	}
+}
+
+rule("Roll Reload")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 0);
+	}
+}
+
+rule("Flashbang Reload")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 0);
+	}
+}
+
+rule("McCree Headshot")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Event Was Critical Hit == True;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 0.600);
+	}
+}
+
+rule("Reload On Kill")
+{
+	event
+	{
+		Player Earned Elimination;
+		All;
+		McCree;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 0);
+	}
+}
+
+rule("Reload = 0")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityVariables), 1) == 0;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityVariables, 2, True);
+		Set Primary Fire Enabled(Event Player, True);
+		Set Secondary Fire Enabled(Event Player, True);
+		Allow Button(Event Player, Primary Fire);
+		Allow Button(Event Player, Secondary Fire);
+	}
+}
+
+rule("Reload != 0")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityVariables), 1) != 0;
+	}
+
+	actions
+	{
+		Skip If(Compare(Value In Array(Player Variable(Event Player, AbilityVariables), 2), ==, False), 5);
+		Set Player Variable At Index(Event Player, AbilityVariables, 2, False);
+		Set Primary Fire Enabled(Event Player, False);
+		Set Secondary Fire Enabled(Event Player, False);
+		Disallow Button(Event Player, Primary Fire);
+		Disallow Button(Event Player, Secondary Fire);
+		Modify Player Variable At Index(Event Player, AbilityVariables, 1, Subtract, 0.100);
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+		Set Player Variable At Index(Event Player, AbilityVariables, 2, True);
+	}
+}
+
+rule("Ult Stats")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Using Ultimate(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 0);
+		Set Move Speed(Event Player, 400);
+		Wait(0.001, Ignore Condition);
+		Loop If Condition Is True;
+		Set Move Speed(Event Player, 100);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("==============[] Pharah")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Initialize Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.017), Ignore Condition);
+		Set Max Health(Event Player, Multiply(Divide(250, 200), 100));
+		Disallow Button(Event Player, Ability 2);
+		Create Effect(Filtered Array(All Players(All Teams), Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 2), ==,
+			True)), Sphere, Sky Blue, Position Of(Event Player), Player Variable(Event Player, AbilityVariableChase_I),
+			Visible To Position and Radius);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Multiply(Max Health(Event Player), 100));
+	}
+}
+
+rule("HUD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+	}
+
+	actions
+	{
+		Wait(0.016, Restart When True);
+		Create HUD Text(Filtered Array(Event Player, Compare(Hero Of(Event Player), ==, Hero(Pharah))), Value In Array(Player Variable(
+			Event Player, AbilityCooldowns), 2), Custom String("Ability 2: Cooldown", Null, Null, Null), Custom String("Exhaust Burst",
+			Null, Null, Null), Left, -6.000, White, Aqua, White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Set Player Variable At Index(Event Player, HudText, 0, True);
+	}
+}
+
+rule("Damage Output Ult")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Using Ultimate(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, Multiply(Divide(12, 40), 100));
+	}
+}
+
+rule("Pharah Damage Output Ult Disable")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Using Ultimate(Event Player) != True;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, 100);
+	}
+}
+
+rule("Pharah Jump Jets Forward")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Forward, 17, To Player, Incorporate Contrary Motion);
+	}
+}
+
+rule("Overheat (Primary Fire)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) == True;
+		Ultimate Charge Percent(Event Player) < 100;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Add(Ultimate Charge Percent(Event Player), 6));
+		Wait(0.160, Ignore Condition);
+		Press Button(Event Player, Primary Fire);
+	}
+}
+
+rule("Overheat (Jump Jets)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+		Ultimate Charge Percent(Event Player) < 100;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Add(Ultimate Charge Percent(Event Player), 20));
+		Wait(0.160, Ignore Condition);
+		Press Button(Event Player, Ability 1);
+	}
+}
+
+rule("Overheat (Hover)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Or(Is Button Held(Event Player, Jump), Is Button Held(Event Player, Secondary Fire)) == True;
+		Ultimate Charge Percent(Event Player) < 100;
+		Is Firing Secondary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Add(Ultimate Charge Percent(Event Player), 3));
+		Wait(0.300, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Exhaust Burst Activation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Ability 2) == True;
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 2) <= 0;
+		Has Status(Event Player, Hacked) == False;
+		Has Status(Event Player, Knocked Down) == False;
+		Has Status(Event Player, Asleep) == False;
+		Has Status(Event Player, Frozen) == False;
+		Has Status(Event Player, Stunned) == False;
+		Is Dead(Event Player) == False;
+		Value In Array(Player Variable(Event Player, AbilityVariables), 3) == False;
+		Is Using Ultimate(Event Player) == False;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Set Ability 2 Enabled(Event Player, False);
+		Set Secondary Fire Enabled(Event Player, False);
+		Wait(0.050, Ignore Condition);
+		Set Secondary Fire Enabled(Event Player, True);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 2, True);
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 2, 6);
+		Modify Global Variable(PharahCompressionBlastPos, Append To Array, Position Of(Event Player));
+		Play Effect(All Players(All Teams), Ring Explosion, Sky Blue, Position Of(Event Player), 15);
+		Play Effect(All Players(All Teams), Good Explosion, Sky Blue, Position Of(Event Player), 8);
+		Play Effect(Players Within Radius(Position Of(Event Player), 10, All Teams, Off), Explosion Sound, White, Position Of(
+			Event Player), 66);
+		Set Player Variable(Event Player, AbilityVariableChase_I, 0);
+		Chase Player Variable Over Time(Event Player, AbilityVariableChase_I, 8, 0.250, Destination and Duration);
+		Wait(0.250, Ignore Condition);
+		Stop Chasing Player Variable(Event Player, AbilityVariableChase_I);
+		Set Player Variable(Event Player, AbilityVariableChase_I, 0);
+		Modify Global Variable(PharahCompressionBlastPos, Remove From Array By Index, 1);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 2, False);
+		Set Ultimate Charge(Event Player, Subtract(Ultimate Charge Percent(Event Player), Add(Divide(Ultimate Charge Percent(Event Player),
+			2.500), 5)));
+		Small Message(Event Player, Custom String("{0} Cooled Down {1}% {0}", Icon String(Arrow: Down), Round To Integer(Add(Divide(
+			Ultimate Charge Percent(Event Player), 2.500), 5), To Nearest), Null));
+		Press Button(Event Player, Ability 2);
+	}
+}
+
+rule("Exhaust Burst Cooldown == 0, reset availability")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 2) == 0;
+	}
+
+	actions
+	{
+		Set Ability 2 Enabled(Event Player, True);
+	}
+}
+
+rule("Exhaust Burst Push (8-6 m)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Distance Between(Event Player, Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos), Distance Between(
+			Event Player, Current Array Element)), 1)) <= 8;
+		Distance Between(Event Player, Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos), Distance Between(
+			Event Player, Current Array Element)), 1)) > 6;
+		Count Of(Global Variable(PharahCompressionBlastPos)) > 1;
+		Is Hero Being Played(Hero(Pharah), All Teams) == True;
+		And(Compare(Hero Of(Event Player), ==, Hero(Pharah)), Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 2), ==,
+			True)) != True;
+	}
+
+	actions
+	{
+		disabled Apply Impulse(Event Player, Add(Direction Towards(Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos),
+			Distance Between(Event Player, Current Array Element)), 1), Event Player), Vector(0, 0.666, 0)), 10, To World,
+			Cancel Contrary Motion);
+		Apply Impulse(Event Player, Add(Direction Towards(Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos),
+			Distance Between(Event Player, Current Array Element)), 1), Event Player), Vector(0, 0.666, 0)), Add(Multiply(4, Divide(
+			Ultimate Charge Percent(Filtered Array(All Living Players(All Teams), Compare(And(Compare(Hero Of(Current Array Element), ==,
+			Hero(Pharah)), Value In Array(Player Variable(Current Array Element, IsUsingAbility), 2)), ==, True))), 100)), 6), To World,
+			Cancel Contrary Motion);
+		Set Status(Event Player, Filtered Array(Closest Player To(Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos),
+			Distance Between(Event Player, Current Array Element)), 1), All Teams), Compare(Hero Of(Current Array Element), ==, Hero(
+			Pharah))), Stunned, 0.010);
+	}
+}
+
+rule("Exhaust Burst Push (6-4 m)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Distance Between(Event Player, Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos), Distance Between(
+			Event Player, Current Array Element)), 1)) <= 6;
+		Distance Between(Event Player, Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos), Distance Between(
+			Event Player, Current Array Element)), 1)) > 4;
+		Count Of(Global Variable(PharahCompressionBlastPos)) > 1;
+		Is Hero Being Played(Hero(Pharah), All Teams) == True;
+		And(Compare(Hero Of(Event Player), ==, Hero(Pharah)), Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 2), ==,
+			True)) != True;
+	}
+
+	actions
+	{
+		disabled Apply Impulse(Event Player, Add(Direction Towards(Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos),
+			Distance Between(Event Player, Current Array Element)), 1), Event Player), Vector(0, 0.666, 0)), 14, To World,
+			Cancel Contrary Motion);
+		Apply Impulse(Event Player, Add(Direction Towards(Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos),
+			Distance Between(Event Player, Current Array Element)), 1), Event Player), Vector(0, 0.666, 0)), Add(Multiply(5.500, Divide(
+			Ultimate Charge Percent(Filtered Array(All Living Players(All Teams), Compare(And(Compare(Hero Of(Current Array Element), ==,
+			Hero(Pharah)), Value In Array(Player Variable(Current Array Element, IsUsingAbility), 2)), ==, True))), 100)), 8), To World,
+			Cancel Contrary Motion);
+		Set Status(Event Player, Filtered Array(Closest Player To(Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos),
+			Distance Between(Event Player, Current Array Element)), 1), All Teams), Compare(Hero Of(Current Array Element), ==, Hero(
+			Pharah))), Stunned, 0.050);
+	}
+}
+
+rule("Exhaust Burst Push (4-0 m)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Distance Between(Event Player, Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos), Distance Between(
+			Event Player, Current Array Element)), 1)) <= 4;
+		Count Of(Global Variable(PharahCompressionBlastPos)) > 1;
+		Is Hero Being Played(Hero(Pharah), All Teams) == True;
+		And(Compare(Hero Of(Event Player), ==, Hero(Pharah)), Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 2), ==,
+			True)) != True;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Add(Direction Towards(Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos),
+			Distance Between(Event Player, Current Array Element)), 1), Event Player), Vector(0, 0.666, 0)), Add(Multiply(8, Divide(
+			Ultimate Charge Percent(Filtered Array(All Living Players(All Teams), Compare(And(Compare(Hero Of(Current Array Element), ==,
+			Hero(Pharah)), Value In Array(Player Variable(Current Array Element, IsUsingAbility), 2)), ==, True))), 100)), 11), To World,
+			Cancel Contrary Motion);
+		Set Status(Event Player, Filtered Array(Closest Player To(Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos),
+			Distance Between(Event Player, Current Array Element)), 1), All Teams), Compare(Hero Of(Current Array Element), ==, Hero(
+			Pharah))), Stunned, 0.050);
+	}
+}
+
+rule("Exhaust Burst stun (2.5-0 m)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Distance Between(Event Player, Value In Array(Sorted Array(Global Variable(PharahCompressionBlastPos), Distance Between(
+			Event Player, Current Array Element)), 1)) <= 2.500;
+		Count Of(Global Variable(PharahCompressionBlastPos)) > 1;
+		Is Hero Being Played(Hero(Pharah), All Teams) == True;
+		And(Compare(Hero Of(Event Player), ==, Hero(Pharah)), Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 2), ==,
+			True)) != True;
+	}
+
+	actions
+	{
+		Set Status(Event Player, Null, Stunned, 0.500);
+	}
+}
+
+rule("Overheat 75%")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) >= 75;
+		Ultimate Charge Percent(Event Player) < 100;
+	}
+
+	actions
+	{
+		Stop Damage Over Time(Value In Array(Player Variable(Event Player, AbilityVariables), 1));
+		Wait(0.016, Ignore Condition);
+		Set Status(Event Player, Null, Burning, 9999);
+		Start Damage Over Time(Event Player, Null, 9999, 5);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, Last Damage Over Time ID);
+	}
+}
+
+rule("Overheat 100%")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) >= 100;
+	}
+
+	actions
+	{
+		Stop Damage Over Time(Value In Array(Player Variable(Event Player, AbilityVariables), 1));
+		Wait(0.016, Ignore Condition);
+		Set Status(Event Player, Null, Burning, 9999);
+		Start Damage Over Time(Event Player, Null, 9999, 20);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, Last Damage Over Time ID);
+	}
+}
+
+rule("Overheat > 75%")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) < 75;
+	}
+
+	actions
+	{
+		Clear Status(Event Player, Burning);
+		Stop Damage Over Time(Value In Array(Player Variable(Event Player, AbilityVariables), 1));
+	}
+}
+
+rule("100% Overheat visual")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) >= 100;
+	}
+
+	actions
+	{
+		Small Message(Event Player, Custom String("{0} Overheating!!! {0}", Icon String(Fire), Null, Null));
+		Wait(2, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Overheat ULT (Jump Jets)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+		Ultimate Charge Percent(Event Player) >= 100;
+	}
+
+	actions
+	{
+		Damage(Event Player, Null, 40);
+		Wait(0.016, Ignore Condition);
+		Press Button(Event Player, Ability 1);
+	}
+}
+
+rule("Overheat ULT (Hover)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Firing Secondary(Event Player) == True;
+		Ultimate Charge Percent(Event Player) >= 100;
+	}
+
+	actions
+	{
+		Damage(Event Player, Null, 1.500);
+		Wait(0.200, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Overheat ULT (Primary Fire)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Firing Primary(Event Player) == True;
+		Ultimate Charge Percent(Event Player) >= 100;
+	}
+
+	actions
+	{
+		Damage(Event Player, Null, 10);
+		Press Button(Event Player, Primary Fire);
+	}
+}
+
+rule("Pharah natural cooldown")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) < 100;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(Event Player, Subtract(Ultimate Charge Percent(Event Player), 1));
+		Wait(0.660, Abort When False);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Dead = stop damage over time")
+{
+	event
+	{
+		Player Died;
+		All;
+		Pharah;
+	}
+
+	actions
+	{
+		Clear Status(Event Player, Burning);
+		Stop Damage Over Time(Value In Array(Player Variable(Event Player, AbilityVariables), 1));
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("=====[] Sombra")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Initialize Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.017), Ignore Condition);
+		Set Player Variable At Index(Event Player, AbilityVariables, 3, Vector(0, 0, 0));
+		Disallow Button(Event Player, Secondary Fire);
+		Disallow Button(Event Player, Ability 2);
+		Disallow Button(Event Player, Ultimate);
+		Set Ability 2 Enabled(Event Player, False);
+		Create Beam Effect(Filtered Array(Event Player, Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 3), ==,
+			True)), Bad Beam, Event Player, Value In Array(Player Variable(Event Player, AbilityVariables), 1), Purple,
+			Visible To Position and Radius);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+		Create Beam Effect(Filtered Array(Remove From Array(All Players(All Teams), Event Player), Compare(Value In Array(Player Variable(
+			Event Player, IsUsingAbility), 3), ==, True)), Bad Beam, Event Player, Value In Array(Player Variable(Event Player,
+			AbilityVariables), 1), Red, Visible To Position and Radius);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+		Create Effect(Filtered Array(Filtered Array(All Players(All Teams), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 3), ==, True)), Compare(Distance Between(Event Player, Current Array Element), <, 10)), Energy Sound, White,
+			Position Of(Event Player), 200, Visible To Position and Radius);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+		Create Effect(Filtered Array(All Players(All Teams), Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 2), ==,
+			True)), Sphere, Purple, Position Of(Event Player), Player Variable(Event Player, AbilityVariableChase_I),
+			Visible To Position and Radius);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+		Create Effect(Filtered Array(All Players(All Teams), Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 4), ==,
+			True)), Sphere, Purple, Value In Array(Player Variable(Event Player, AbilityVariables), 3), Player Variable(Event Player,
+			AbilityVariableChase_II), Visible To Position and Radius);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Multiply(Max Health(Event Player), 100));
+	}
+}
+
+rule("HUD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+	}
+
+	actions
+	{
+		Wait(0.016, Restart When True);
+		Create HUD Text(Filtered Array(Event Player, Compare(Hero Of(Event Player), ==, Hero(Sombra))), Value In Array(Player Variable(
+			Event Player, AbilityCooldowns), 3), Custom String("Secondary Fire", Null, Null, Null), Custom String("Data Transfer", Null,
+			Null, Null), Left, -3.000, White, Purple, White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Create HUD Text(Filtered Array(Event Player, Compare(Hero Of(Event Player), ==, Hero(Sombra))), Value In Array(Player Variable(
+			Event Player, AbilityCooldowns), 2), Custom String("Ability 2", Null, Null, Null), Custom String("Short Circuit", Null, Null,
+			Null), Left, -2.000, White, Purple, White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Custom String("Ultimate", Null, Null, Null), Custom String("Blackout", Null, Null, Null), Left,
+			-1.000, White, Purple, White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Set Player Variable At Index(Event Player, HudText, 0, True);
+	}
+}
+
+rule("Ability 2 Activation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Ability 2) == True;
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 2) <= 0;
+		Has Status(Event Player, Hacked) == False;
+		Has Status(Event Player, Knocked Down) == False;
+		Has Status(Event Player, Asleep) == False;
+		Has Status(Event Player, Frozen) == False;
+		Has Status(Event Player, Stunned) == False;
+		Is Dead(Event Player) == False;
+		Is Using Ability 1(Event Player) == False;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) != True;
+	}
+
+	actions
+	{
+		Set Ability 2 Enabled(Event Player, False);
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 2, 8);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 2, True);
+		Wait(0.100, Ignore Condition);
+		Set Player Variable(Event Player, AbilityVariableChase_I, 0);
+		Chase Player Variable Over Time(Event Player, AbilityVariableChase_I, 10, 0.250, Destination and Duration);
+		Apply Impulse(Event Player, Up, 8, To World, Cancel Contrary Motion);
+		Apply Impulse(Event Player, Forward, 10, To Player, Incorporate Contrary Motion);
+		Set Status(Event Player, Null, Stunned, 0.300);
+		Set Status(Event Player, Null, Asleep, 0.050);
+		Play Effect(Event Player, Good Explosion, Purple, Event Player, 8);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, Purple, Event Player, 50);
+		Wait(0.150, Ignore Condition);
+		Small Message(Filtered Array(Players Within Radius(Event Player, 10, All Teams, Off), Compare(Event Player, ==, False)), String(
+			"{0} {1} {2}", Icon String(Warning), Custom String("Short Circuit", Null, Null, Null), Icon String(Warning)));
+		Set Status(Remove From Array(Players Within Radius(Event Player, 10, All Teams, Off), Event Player), Event Player, Hacked, 3);
+		Set Status(Remove From Array(Players Within Radius(Event Player, 10, All Teams, Off), Event Player), Event Player, Stunned, 0.500);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 2, False);
+		Stop Chasing Player Variable(Event Player, AbilityVariableChase_I);
+		Abort If(Or(Compare(Hero Of(Event Player), !=, Hero(Sombra)), Is Dead(Event Player)));
+	}
+}
+
+rule("Ability 2 Cooldown == 0, reset availability")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 2) == 0;
+		Is Using Ability 1(Event Player) != True;
+	}
+
+	actions
+	{
+		Set Ability 2 Enabled(Event Player, True);
+		Disallow Button(Event Player, Ability 2);
+	}
+}
+
+rule("Ability 3 Activation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Secondary Fire) == True;
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 3) <= 0;
+		Has Status(Event Player, Hacked) == False;
+		Has Status(Event Player, Knocked Down) == False;
+		Has Status(Event Player, Asleep) == False;
+		Has Status(Event Player, Frozen) == False;
+		Has Status(Event Player, Stunned) == False;
+		Is Dead(Event Player) == False;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) != True;
+	}
+
+	actions
+	{
+		Set Secondary Fire Enabled(Event Player, False);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 3, True);
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 3, 12);
+		Set Ability 2 Enabled(Event Player, False);
+		Start Facing(Event Player, Facing Direction Of(Event Player), 0.001, To World, Direction and Turn Rate);
+		Start Forcing Throttle(Event Player, 0, 0, 0, 0, 0, 0);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, Ray Cast Hit Position(Eye Position(Event Player), Add(Eye Position(
+			Event Player), Multiply(Facing Direction Of(Event Player), 15)), Null, Event Player, True));
+		Wait(0.200, Ignore Condition);
+		Set Invisible(Event Player, Enemies);
+		Set Status(Event Player, Null, Asleep, 0.050);
+		Set Status(Event Player, Null, Phased Out, 0.500);
+		Set Status(Event Player, Null, Knocked Down, 0.500);
+		Start Camera(Event Player, Ray Cast Hit Position(Eye Position(Event Player), Add(Eye Position(Event Player), Multiply(
+			Facing Direction Of(Event Player), -3.000)), All Players(All Teams), Event Player, False), Add(Event Player, Multiply(
+			Facing Direction Of(Event Player), 15)), 100);
+		Wait(0.500, Ignore Condition);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 3, False);
+		Play Effect(Event Player, Good Explosion, Purple, Value In Array(Player Variable(Event Player, AbilityVariables), 1), 0.100);
+		Play Effect(Remove From Array(All Players(All Teams), Event Player), Bad Explosion, Red, Value In Array(Player Variable(
+			Event Player, AbilityVariables), 1), 0.100);
+		Stop Facing(Event Player);
+		Stop Camera(Event Player);
+		Stop Forcing Throttle(Event Player);
+		Set Invisible(Event Player, None);
+		Wait(0.100, Ignore Condition);
+		Abort If(Or(Compare(Hero Of(Event Player), !=, Hero(Sombra)), Is Dead(Event Player)));
+		Play Effect(Filtered Array(All Players(All Teams), Compare(Distance Between(Current Array Element, Value In Array(Player Variable(
+			Event Player, AbilityVariables), 1)), <, 20)), Buff Explosion Sound, Red, Event Player, 10000);
+		Abort If(Or(Compare(Hero Of(Event Player), !=, Hero(Sombra)), Is Dead(Event Player)));
+	}
+}
+
+rule("Ability 3 Travel")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 3) == True;
+		Distance Between(Event Player, Value In Array(Player Variable(Event Player, AbilityVariables), 1)) > 3;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Direction Towards(Event Player, Value In Array(Player Variable(Event Player, AbilityVariables), 1)),
+			20, To World, Cancel Contrary Motion);
+		Wait(0.150, Ignore Condition);
+		Loop If Condition Is True;
+		disabled Apply Impulse(Event Player, Direction Towards(Event Player, Value In Array(Player Variable(Event Player, AbilityVariables), 1)),
+			-0.001, To World, Cancel Contrary Motion);
+		disabled Apply Impulse(Event Player, Direction Towards(Event Player, Value In Array(Player Variable(Event Player, AbilityVariables), 1)),
+			10, To World, Cancel Contrary Motion);
+	}
+}
+
+rule("Ability 3 Cooldown == 0, reset availability")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 3) == 0;
+		Is Using Ability 1(Event Player) != True;
+	}
+
+	actions
+	{
+		Set Secondary Fire Enabled(Event Player, True);
+		Allow Button(Event Player, Secondary Fire);
+	}
+}
+
+rule("Ultimate Activation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Ultimate) == True;
+		Ultimate Charge Percent(Event Player) == 100;
+		Has Status(Event Player, Hacked) == False;
+		Has Status(Event Player, Knocked Down) == False;
+		Has Status(Event Player, Asleep) == False;
+		Has Status(Event Player, Frozen) == False;
+		Has Status(Event Player, Stunned) == False;
+		Is Dead(Event Player) == False;
+	}
+
+	actions
+	{
+		Abort If(Compare(Is Using Ability 1(Event Player), ==, True));
+		Set Player Variable(Event Player, AbilityVariableChase_II, 0);
+		Modify Global Variable(SombraUltimatePos, Append To Array, Position Of(Event Player));
+		Set Player Variable At Index(Event Player, AbilityVariables, 3, Position Of(Event Player));
+		Set Player Variable At Index(Event Player, IsUsingAbility, 4, True);
+		Allow Button(Event Player, Ultimate);
+		Press Button(Event Player, Ultimate);
+		Wait(0.100, Ignore Condition);
+		Abort If(Or(Compare(Hero Of(Event Player), !=, Hero(Sombra)), Is Dead(Event Player)));
+		Set Player Variable(Event Player, AbilityVariableChase_II, 0);
+		Chase Player Variable Over Time(Event Player, AbilityVariableChase_II, 15, 0.250, Destination and Duration);
+		Wait(0.150, Ignore Condition);
+		Abort If(Or(Compare(Hero Of(Event Player), !=, Hero(Sombra)), Is Dead(Event Player)));
+		Skip If(Compare(Ultimate Charge Percent(Event Player), ==, 0), 1);
+		Set Ultimate Charge(Event Player, 0);
+		Disallow Button(Event Player, Ultimate);
+		Set Status(Event Player, Null, Asleep, 0.050);
+		Wait(0.160, Ignore Condition);
+		Abort If(Or(Compare(Hero Of(Event Player), !=, Hero(Sombra)), Is Dead(Event Player)));
+		Stop Chasing Player Variable(Event Player, AbilityVariableChase_II);
+		Big Message(Remove From Array(Players Within Radius(Value In Array(Player Variable(Event Player, AbilityVariables), 3), 15,
+			All Teams, Off), Event Player), Custom String("Blackout", Null, Null, Null));
+		Set Status(Remove From Array(Players Within Radius(Value In Array(Player Variable(Event Player, AbilityVariables), 3), 15,
+			All Teams, Off), Event Player), Event Player, Hacked, 4);
+		Set Status(Remove From Array(Players Within Radius(Value In Array(Player Variable(Event Player, AbilityVariables), 3), 15,
+			All Teams, Off), Event Player), Event Player, Stunned, 1);
+		Set Status(Remove From Array(Players Within Radius(Value In Array(Player Variable(Event Player, AbilityVariables), 3), 15,
+			All Teams, Off), Event Player), Event Player, Rooted, 4);
+		Wait(4, Ignore Condition);
+		Abort If(Or(Compare(Hero Of(Event Player), !=, Hero(Sombra)), Is Dead(Event Player)));
+		Set Player Variable At Index(Event Player, IsUsingAbility, 4, False);
+		Modify Global Variable(SombraUltimatePos, Remove From Array By Index, 1);
+	}
+}
+
+rule("Ultimate Lock Players Out")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Distance Between(Event Player, Value In Array(Sorted Array(Global Variable(SombraUltimatePos), Distance Between(Event Player,
+			Current Array Element)), 1)) <= 15;
+		Count Of(Global Variable(SombraUltimatePos)) > 1;
+		Is Hero Being Played(Hero(Sombra), All Teams) == True;
+		Hero Of(Event Player) != Hero(Sombra);
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Direction Towards(Value In Array(Sorted Array(Global Variable(SombraUltimatePos), Distance Between(
+			Event Player, Current Array Element)), 1), Event Player), 10, To World, Cancel Contrary Motion);
+		Set Status(Event Player, Null, Stunned, 1);
+	}
+}
+
+rule("Sombra: Invis abilities disable")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Ability 2 Enabled(Event Player, False);
+		Set Secondary Fire Enabled(Event Player, False);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, True);
+	}
+}
+
+rule("Sombra: Invis abilities enable")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) != True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+	}
+}
+
+rule("Sombra: Invis ability 2 enable")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Or(Is Using Ability 1(Event Player), Value In Array(Player Variable(Event Player, IsUsingAbility), 3)) != True;
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 2) <= 0;
+	}
+
+	actions
+	{
+		Wait(0.400, Ignore Condition);
+		Abort If Condition Is False;
+		Set Ability 2 Enabled(Event Player, True);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+	}
+}
+
+rule("Sombra: Invis ability 3 enable")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Sombra;
+	}
+
+	conditions
+	{
+		Or(Is Using Ability 1(Event Player), Value In Array(Player Variable(Event Player, IsUsingAbility), 2)) != True;
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 3) <= 0;
+	}
+
+	actions
+	{
+		Wait(0.400, Ignore Condition);
+		Abort If Condition Is False;
+		Set Secondary Fire Enabled(Event Player, True);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("==============[] Lucio")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Initialize Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Lúcio;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.017), Ignore Condition);
+		Set Healing Dealt(Event Player, 0);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, True);
+		Create Effect(Filtered Array(Filtered Array(Event Player, Compare(Is Alive(Event Player), ==, True)), Compare(Is Using Ability 1(
+			Event Player), !=, True)), Ring, Blue, Position Of(Event Player), 12, Visible To Position and Radius);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Multiply(Max Health(Event Player), 100));
+	}
+}
+
+rule("HUD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Lúcio;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+	}
+
+	actions
+	{
+		Wait(0.016, Restart When True);
+		Create HUD Text(Filtered Array(Event Player, Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 1), ==, True)),
+			Null, Custom String("Ability 1: Now Playing", Null, Null, Null), Custom String("Speed Song", Null, Null, Null), Left, -2.000,
+			White, Green, Green, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Create HUD Text(Filtered Array(Event Player, Compare(Value In Array(Player Variable(Event Player, IsUsingAbility), 1), ==, False)),
+			Null, Custom String("Ability 1: Now Playing", Null, Null, Null), Custom String("Damage Song", Null, Null, Null), Left, -2.000,
+			White, Green, Blue, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Create HUD Text(Event Player, Null, Custom String("Ultimate", Null, Null, Null), Custom String("Subwoofer Blowout", Null, Null,
+			Null), Left, -1.000, White, Green, White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+		Set Player Variable At Index(Event Player, HudText, 0, True);
+	}
+}
+
+rule("Lucio Damage Boost")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Lúcio;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == False;
+		Is Using Ability 2(Event Player) == False;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, Add(Multiply(0.250, 100), 100));
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+	}
+}
+
+rule("Lucio Speed Boost")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Lúcio;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Damage Dealt(Event Player, 100);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, True);
+	}
+}
+
+rule("Lucio Amp Damage")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Lúcio;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+		Is Using Ability 1(Event Player) == False;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Set Damage Dealt(Event Player, Add(Multiply(0.500, 100), 100));
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+		Skip If(Compare(Is Using Ability 1(Event Player), ==, False), 1);
+		Set Damage Dealt(Event Player, 100);
+	}
+}
+
+rule("Ultimate")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Lúcio;
+	}
+
+	conditions
+	{
+		Max Health(Event Player) > 500;
+	}
+
+	actions
+	{
+		Apply Impulse(Remove From Array(Players Within Radius(Event Player, 12, All Teams, Surfaces And All Barriers), Event Player),
+			Vector(0, 1.300, 0), 11.500, To World, Cancel Contrary Motion);
+		Damage(Remove From Array(Players Within Radius(Event Player, 12, All Teams, Surfaces And All Barriers), Event Player),
+			Event Player, 25);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("==============[] Hanzo")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Initialize Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.017), Ignore Condition);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Multiply(Max Health(Event Player), 100));
+	}
+}
+
+rule("Piercing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Primary Fire) == True;
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Good Explosion, Red, Ray Cast Hit Position(Vector(0, 0, 0), Vector(0, 0, 0), All Players(
+			All Teams), Event Player, True), 0.100);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, Ray Cast Hit Position(Eye Position(Event Player), Add(Eye Position(
+			Event Player), Multiply(Facing Direction Of(Event Player), 100)), All Players(All Teams), Event Player, True));
+		Set Player Variable At Index(Event Player, AbilityVariables, 2, Add(Value In Array(Player Variable(Event Player, AbilityVariables),
+			1), Multiply(Facing Direction Of(Event Player), 2.700)));
+		Set Player Variable At Index(Event Player, AbilityVariables, 3, Ray Cast Hit Player(Value In Array(Player Variable(Event Player,
+			AbilityVariables), 2), Add(Value In Array(Player Variable(Event Player, AbilityVariables), 2), Multiply(Facing Direction Of(
+			Event Player), 100)), All Players(All Teams), Event Player, True));
+		Set Player Variable At Index(Event Player, AbilityVariables, 4, Ray Cast Hit Position(Value In Array(Player Variable(Event Player,
+			AbilityVariables), 2), Add(Value In Array(Player Variable(Event Player, AbilityVariables), 2), Multiply(Facing Direction Of(
+			Event Player), 1000)), All Players(All Teams), Event Player, True));
+		Play Effect(All Players(All Teams), Good Explosion, Red, Value In Array(Player Variable(Event Player, AbilityVariables), 1),
+			0.200);
+		Play Effect(All Players(All Teams), Good Explosion, Red, Value In Array(Player Variable(Event Player, AbilityVariables), 4),
+			0.100);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, True);
+		Wait(0.300, Restart When True);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Storm Arrow apply damage Headshot")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Distance Between(Value In Array(Player Variable(Event Player, AbilityVariables), 4), Eye Position(Value In Array(Player Variable(
+			Event Player, AbilityVariables), 3))) < 0.400;
+		disabled Is Using Ability 2(Event Player) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 2) == True;
+	}
+
+	actions
+	{
+		Damage(Value In Array(Player Variable(Event Player, AbilityVariables), 3), Event Player, 60);
+		Wait(0.300, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Storm Arrow apply damage NOTHEADSHOT")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Distance Between(Value In Array(Player Variable(Event Player, AbilityVariables), 4), Eye Position(Value In Array(Player Variable(
+			Event Player, AbilityVariables), 3))) >= 0.400;
+		disabled Is Using Ability 2(Event Player) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 2) == True;
+	}
+
+	actions
+	{
+		Damage(Value In Array(Player Variable(Event Player, AbilityVariables), 3), Event Player, 30);
+		Wait(0.300, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Stop firing arrow in var")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Primary Fire) == False;
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+	}
+}
+
+rule("Set firing speed Storm")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Projectile Speed(Event Player, Multiply(100, 10000));
+		Set Player Variable At Index(Event Player, IsUsingAbility, 2, True);
+	}
+}
+
+rule("Set firing speed OOT")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 2) == True;
+		Is Button Held(Event Player, Primary Fire) == False;
+		Is Using Ability 2(Event Player) == False;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 2, False);
+		Set Projectile Speed(Event Player, 100);
+	}
+}
+
+rule("2nd arrow beam")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 1) == True;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 2) == True;
+	}
+
+	actions
+	{
+		Create Beam Effect(All Players(All Teams), Bad Beam, Value In Array(Player Variable(Event Player, AbilityVariables), 2),
+			Value In Array(Player Variable(Event Player, AbilityVariables), 4), Red, None);
+		Set Player Variable At Index(Event Player, AbilityEffects, 1, Last Created Entity);
+		Wait(0.150, Ignore Condition);
+		Destroy Effect(Value In Array(Player Variable(Event Player, AbilityEffects), 1));
+		Modify Player Variable(Event Player, AbilityEffects, Remove From Array By Value, Last Of(Player Variable(Event Player,
+			AbilityEffects)));
+		Wait(0.150, Restart When True);
+		Loop If Condition Is True;
+	}
+}
+
+rule("Set firing speed last shot")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Primary Fire) == True;
+		Is Using Ability 2(Event Player) == False;
+		Value In Array(Player Variable(Event Player, IsUsingAbility), 2) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, True);
+		Set Projectile Speed(Event Player, 100);
+		Wait(0.050, Ignore Condition);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 1, False);
+	}
+}
+
+rule("Set arrows off in var")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == False;
+	}
+
+	actions
+	{
+		Wait(0.100, Ignore Condition);
+		Set Player Variable At Index(Event Player, IsUsingAbility, 2, False);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("========================[] JUMP PADS/MAP ENHANCEMENTS")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Castillo Spawn Jump Pad Pos")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Castillo);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Global Variable At Index(JumpPadPos, 0, Vector(-110.716, 33.310, 59.868));
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(-96.742, 33.560, 48.217));
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(-93.222, 33.560, 65.576));
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 0), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 1), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 2), 1,
+			Visible To Position and Radius);
+		Set Global Variable(JumpPadNumber, 2);
+	}
+}
+
+rule("Castillo Jump pad")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Global Variable(JumpPadPos), Compare(Distance Between(Event Player, Current Array Element), <=, 1.200)) == True;
+		Current Map == Map(Castillo);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Up, 15, To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("King's Row Spawn Jump Pad Pos")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(King's Row);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Global Variable At Index(JumpPadPos, 0, Vector(-63.259, -0.030, -17.929));
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(-90.435, 0.820, -35.868));
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(-94.711, 7.490, -25.471));
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 0), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 1), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 2), 1,
+			Visible To Position and Radius);
+		Create Beam Effect(All Players(All Teams), Grapple Beam, Value In Array(Global Variable(JumpPadPos), 2), Vector(-94.160, 8.247,
+			-24.940), Green, Visible To Position and Radius);
+		Set Global Variable(JumpPadNumber, 2);
+	}
+}
+
+rule("King's Row Jump pad 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Remove From Array(Global Variable(JumpPadPos), Value In Array(Global Variable(JumpPadPos), 2)), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)) == True;
+		Current Map == Map(King's Row);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Up, 15.700, To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("King's Row Jump pad 2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Array Slice(Global Variable(JumpPadPos), 2, 1), Compare(Distance Between(Event Player, Current Array Element), <=,
+			1.200)) == True;
+		Current Map == Map(King's Row);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Vector Towards(Value In Array(Global Variable(JumpPadPos), 2), Vector(-87.709, 13.376, -18.497)), 20,
+			To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("Forest Spawn Jump Pad Pos")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Black Forest Winter);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Global Variable At Index(JumpPadPos, 0, Vector(4.770, 11.257, 5));
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 0), 2.400,
+			Visible To Position and Radius);
+		Set Global Variable(JumpPadNumber, 0);
+	}
+}
+
+rule("Forest Jump pad")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Global Variable(JumpPadPos), Compare(Distance Between(Event Player, Current Array Element), <=, 2.400)) == True;
+		Current Map == Map(Black Forest Winter);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Up, 13.750, To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 2.400)), 7);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("Chateau Spawn Jump Pad Pos")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Château Guillard Halloween);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Global Variable At Index(JumpPadPos, 0, Vector(215.840, 1, 75.683));
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 0), 1,
+			Visible To Position and Radius);
+		Set Global Variable(JumpPadNumber, 1);
+	}
+}
+
+rule("Chateau Jump pad")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Global Variable(JumpPadPos), Compare(Distance Between(Event Player, Current Array Element), <=, 1.200)) == True;
+		Current Map == Map(Château Guillard Halloween);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Up, 17, To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("Eichenwalde Spawn Jump Pad Pos")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Eichenwalde);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Global Variable At Index(JumpPadPos, 0, Vector(105.227, 12.750, -71.811));
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(66.039, 12.410, -104.723));
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(35.960, 4.830, -63.827));
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 0), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 1), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 2), 1,
+			Visible To Position and Radius);
+		Create Beam Effect(All Players(All Teams), Grapple Beam, Value In Array(Global Variable(JumpPadPos), 2), Vector(36.418, 5.823,
+			-63.838), Green, Visible To Position and Radius);
+		Set Global Variable(JumpPadNumber, 2);
+	}
+}
+
+rule("Eichenwalde Jump pad 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Remove From Array(Global Variable(JumpPadPos), Value In Array(Global Variable(JumpPadPos), 2)), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)) == True;
+		Current Map == Map(Eichenwalde);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Up, 16, To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("Eichenwalde Jump pad 2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Array Slice(Global Variable(JumpPadPos), 2, 1), Compare(Distance Between(Event Player, Current Array Element), <=,
+			1.200)) == True;
+		Current Map == Map(Eichenwalde);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Vector Towards(Value In Array(Global Variable(JumpPadPos), 2), Vector(52.905, 33.786, -65.369)), 32,
+			To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("BW Spawn Jump Pad Pos")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Blizzard World Winter);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Global Variable At Index(JumpPadPos, 0, Vector(-59.059, -0.170, 93.825));
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(-47.280, -0.163, 74.227));
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 0), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 1), 1,
+			Visible To Position and Radius);
+		Create Beam Effect(All Players(All Teams), Grapple Beam, Value In Array(Global Variable(JumpPadPos), 1), Vector(-47.304, 0.804,
+			74.598), Green, Visible To Position and Radius);
+		Set Global Variable(JumpPadNumber, 1);
+	}
+}
+
+rule("BW Jump pad 0")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Array Slice(Global Variable(JumpPadPos), 0, 1), Compare(Distance Between(Event Player, Current Array Element), <=,
+			1.200)) == True;
+		Current Map == Map(Blizzard World Winter);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Up, 16, To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("BW Jump pad 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Array Slice(Global Variable(JumpPadPos), 1, 1), Compare(Distance Between(Event Player, Current Array Element), <=,
+			1.200)) == True;
+		Current Map == Map(Blizzard World Winter);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Vector Towards(Value In Array(Global Variable(JumpPadPos), 1), Vector(-48.915, 17.931, 82.726)), 27,
+			To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("Dorado Jump Pad Spawn")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Current Map == Map(Dorado);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Global Variable(JumpPadPos, Empty Array);
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(128.993, 11.050, 16.606));
+		Modify Global Variable(JumpPadPos, Append To Array, Vector(101.392, 11.038, 10.954));
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 0), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Green, Value In Array(Global Variable(JumpPadPos), 1), 1,
+			Visible To Position and Radius);
+		Set Global Variable(JumpPadNumber, 1);
+	}
+}
+
+rule("Dorado Jump pads")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Global Variable(JumpPadPos), Compare(Distance Between(Event Player, Current Array Element), <=, 1.200)) == True;
+		Current Map == Map(Dorado);
+		Global Variable(JumpPadsEnabled) == True;
+	}
+
+	actions
+	{
+		Abort If(And(Compare(Hero Of(Event Player), ==, Hero(Bastion)), Compare(Value In Array(Player Variable(Event Player,
+			IsUsingAbility), 1), ==, True)));
+		Apply Impulse(Event Player, Up, 18, To World, Cancel Contrary Motion);
+		Play Effect(All Players(All Teams), Good Pickup Effect, Green, Filtered Array(Global Variable(JumpPadPos), Compare(
+			Distance Between(Event Player, Current Array Element), <=, 1.200)), 1);
+		Play Effect(All Players(All Teams), Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("========================[] Debug")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("Knockback/Cliff bots position (B)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global Variable(DebugEnabled) == True;
+		Current Map == Map(Castillo);
+		Current Game Mode == Game Mode(Deathmatch);
+	}
+
+	actions
+	{
+		Set Global Variable At Index(CliffKnockbackBotsPos, 0, Vector(-75.414, 32.774, 65.200));
+		Modify Global Variable(CliffKnockbackBotsPos, Append To Array, Vector(-79.936, 32.774, 41.996));
+		Create Effect(All Players(All Teams), Sphere, Blue, Value In Array(Global Variable(CliffKnockbackBotsPos), 0), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Sphere, Blue, Value In Array(Global Variable(CliffKnockbackBotsPos), 1), 1,
+			Visible To Position and Radius);
+		Create In-World Text(All Players(All Teams), String("{0} {1}", String("Spawn", Null, Null, Null), String("Participants", Null,
+			Null, Null), Null), Add(Value In Array(Global Variable(CliffKnockbackBotsPos), 0), Up), 1, Clip Against Surfaces,
+			Visible To Position and String, Red, Visible Always);
+		Create In-World Text(All Players(All Teams), String("{0} {1}", String("Spawn", Null, Null, Null), String("Participants", Null,
+			Null, Null), Null), Add(Value In Array(Global Variable(CliffKnockbackBotsPos), 1), Up), 1, Clip Against Surfaces,
+			Visible To Position and String, Red, Visible Always);
+	}
+}
+
+rule("Spawn Cliff Bots")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Global Variable(CliffKnockbackBotsPos), Compare(Distance Between(Event Player, Current Array Element), <=, 1.200))
+			== True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+		Current Map == Map(Castillo);
+		Current Game Mode == Game Mode(Deathmatch);
+	}
+
+	actions
+	{
+		Stop Facing(All Players(All Teams));
+		Play Effect(All Players(All Teams), Buff Explosion Sound, White, Event Player, 100);
+		Destroy All Dummy Bots;
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(McCree), All Teams, 1, Vector(-75.995, 34.117, 59.630), Null);
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(Roadhog), All Teams, 2, Vector(-78.518, 34.107, 46.727), Null);
+		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Add(Host Player, Vector(
+			0, 0.400, 0))), 100, To World, Direction and Turn Rate);
+		Start Facing(Players In Slot(2, All Teams), Direction Towards(Eye Position(Players In Slot(2, All Teams)), Add(Host Player, Vector(
+			0, 0.400, 0))), 100, To World, Direction and Turn Rate);
+		Wait(0.250, Ignore Condition);
+	}
+}
+
+rule("Spawn Moving Bots Position (C)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global Variable(DebugEnabled) == True;
+		Current Map == Map(Castillo);
+		Current Game Mode == Game Mode(Deathmatch);
+	}
+
+	actions
+	{
+		Set Global Variable At Index(MovingBotsPos, 0, Vector(-91.797, 33.754, 53.159));
+		Modify Global Variable(MovingBotsPos, Append To Array, Vector(-89.847, 38.467, 56.037));
+		Create Effect(All Players(All Teams), Ring, Sky Blue, Value In Array(Global Variable(MovingBotsPos), 0), 1,
+			Visible To Position and Radius);
+		Create Effect(All Players(All Teams), Ring, Sky Blue, Value In Array(Global Variable(MovingBotsPos), 1), 1,
+			Visible To Position and Radius);
+		Create In-World Text(All Players(All Teams), String("{0} {1}", String("Spawn", Null, Null, Null), String("Running", Null, Null,
+			Null), Null), Add(Value In Array(Global Variable(MovingBotsPos), 0), Up), 1, Clip Against Surfaces,
+			Visible To Position and String, Red, Visible Always);
+		Create In-World Text(All Players(All Teams), String("{0} {1}", String("Spawn", Null, Null, Null), String("Running", Null, Null,
+			Null), Null), Add(Value In Array(Global Variable(MovingBotsPos), 1), Up), 1, Clip Against Surfaces,
+			Visible To Position and String, Red, Visible Always);
+	}
+}
+
+rule("Start Running Bots")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Global Variable(MovingBotsPos), Compare(Distance Between(Event Player, Current Array Element), <=, 1.200)) == True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+		Current Map == Map(Castillo);
+		Current Game Mode == Game Mode(Deathmatch);
+	}
+
+	actions
+	{
+		Stop Facing(All Players(All Teams));
+		Play Effect(All Players(All Teams), Buff Explosion Sound, White, Event Player, 100);
+		Destroy All Dummy Bots;
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(Soldier: 76), All Teams, 1, Vector(-105.198, 33.744, 37.444), Direction Towards(Eye Position(Players In Slot(
+			1, All Teams)), Vector(-95.785, 33.918, 73.376)));
+		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Vector(-95.473, 33.871,
+			73.110)), 100, To World, Direction and Turn Rate);
+		Start Forcing Throttle(Players In Slot(1, All Teams), 1, 1, 0, 1, 0, 1);
+		Wait(20, Ignore Condition);
+		Destroy All Dummy Bots;
+		Loop If Condition Is True;
+	}
+}
+
+rule("Spawn test bot Position (D)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global Variable(DebugEnabled) == True;
+		Current Map == Map(Castillo);
+		Current Game Mode == Game Mode(Deathmatch);
+	}
+
+	actions
+	{
+		Set Global Variable At Index(ShieldReinPos, 0, Vector(-101.660, 33.904, 49.185));
+		Create Effect(All Players(All Teams), Ring, Sky Blue, Value In Array(Global Variable(ShieldReinPos), 0), 1,
+			Visible To Position and Radius);
+		Create In-World Text(All Players(All Teams), String("{0} {1}", String("Spawn", Null, Null, Null), String("Protected", Null, Null,
+			Null), Null), Add(Value In Array(Global Variable(ShieldReinPos), 0), Up), 1, Clip Against Surfaces,
+			Visible To Position and String, Red, Visible Always);
+	}
+}
+
+rule("Spawn test Bot")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is True For Any(Global Variable(ShieldReinPos), Compare(Distance Between(Event Player, Current Array Element), <=, 1.200)) == True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+		Current Map == Map(Castillo);
+		Current Game Mode == Game Mode(Deathmatch);
+	}
+
+	actions
+	{
+		Stop Facing(All Players(All Teams));
+		Play Effect(All Players(All Teams), Buff Explosion Sound, White, Event Player, 100);
+		Destroy All Dummy Bots;
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(Lúcio), All Teams, 1, Vector(-110.814, 34.754, 59.942), Direction Towards(Eye Position(Players In Slot(1,
+			All Teams)), Vector(-95.785, 33.918, 73.376)));
+		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Host Player), 100,
+			To World, Direction and Turn Rate);
+		Start Holding Button(Players In Slot(1, All Teams), Ultimate);
+		Wait(0.250, Ignore Condition);
+	}
+}
+
+rule("OWNER ONLY: Acknowledge = slow motion")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Acknowledge) == True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+	}
+
+	actions
+	{
+		Set Slow Motion(10);
+		Wait(3, Ignore Condition);
+		Set Slow Motion(100);
+	}
+}
+
+rule("OWNER ONLY: group up = speed boost")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Group Up) == True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+	}
+
+	actions
+	{
+		disabled Set Move Speed(Event Player, 300);
+		disabled Wait(5, Ignore Condition);
+		disabled Set Move Speed(Event Player, 100);
+		Start Holding Button(Players In Slot(1, All Teams), Secondary Fire);
+		Start Holding Button(Players In Slot(2, All Teams), Ability 1);
+		Wait(5, Ignore Condition);
+		Stop Holding Button(Players In Slot(1, All Teams), Secondary Fire);
+		Stop Holding Button(Players In Slot(2, All Teams), Ability 1);
+	}
+}
+
+disabled rule("OWNER ONLY: Hello = Death")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Hello) == True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+	}
+
+	actions
+	{
+		Kill(Event Player, Event Player);
+		Wait(0.016, Ignore Condition);
+		Respawn(Event Player);
+	}
+}
+
+rule("OWNER ONLY: Thanks = Healing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Thanks) == True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+	}
+
+	actions
+	{
+		Start Heal Over Time(Event Player, Event Player, 5, 20);
+		Play Effect(Players Within Radius(Event Player, 0.200, All Teams, Surfaces), Buff Explosion Sound, White, Players Within Radius(
+			Event Player, 0.200, All Teams, Surfaces), 200);
+	}
+}
+
+rule("OWNER ONLY: Need Healing = Damage Over Time")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Need Healing) == True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+	}
+
+	actions
+	{
+		Play Effect(Players Within Radius(Event Player, 0.200, All Teams, Surfaces), Debuff Impact Sound, White, Players Within Radius(
+			Event Player, 0.200, All Teams, Surfaces), 200);
+		Damage(Event Player, Null, Subtract(Health(Event Player), 1));
+	}
+}
+
+rule("OWNER ONLY: Ult voice line = Ult Charge")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Ultimate Status) == True;
+		Event Player == Host Player;
+		Global Variable(DebugEnabled) == True;
+	}
+
+	actions
+	{
+		Set Ultimate Charge(All Players(All Teams), 100);
+		Play Effect(Players Within Radius(Event Player, 0.200, All Teams, Surfaces), Ring Explosion Sound, White, Players Within Radius(
+			Event Player, 0.200, All Teams, Surfaces), 200);
+	}
+}
+
+rule("Short Cooldowns 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 1) > 0;
+		Global Variable(ShortCooldownsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 1, 2);
+	}
+}
+
+rule("Short Cooldowns 2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 2) > 0;
+		Global Variable(ShortCooldownsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 2, 2);
+	}
+}
+
+rule("Short Cooldowns 3")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 3) > 0;
+		Global Variable(ShortCooldownsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 3, 2);
+	}
+}
+
+rule("Short Cooldowns 4")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityCooldowns), 4) > 0;
+		Global Variable(ShortCooldownsEnabled) == True;
+	}
+
+	actions
+	{
+		Set Player Variable At Index(Event Player, AbilityCooldowns, 4, 2);
+	}
+}
+
+rule("HUD (characters not set up)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+		Array Contains(Global Variable(CharacterIsSetUpGlobal), Hero Of(Event Player)) == False;
+		Has Spawned(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.016), Ignore Condition);
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 1));
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 2));
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 3));
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 4));
+		Destroy HUD Text(Value In Array(Player Variable(Event Player, HudText), 5));
+		Set Player Variable(Event Player, HudText, Null);
+		Wait(0.016, Ignore Condition);
+		Create HUD Text(Filtered Array(Filtered Array(Event Player, Compare(Is Alive(Event Player), ==, True)), Compare(Is Alive(
+			Event Player), ==, True)), Null, Custom String("Placeholder", Null, Null, Null), Custom String("(Aka this isnt finished)",
+			Null, Null, Null), Left, -3.000, White, Red, White, Visible To and String, Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+	}
+}
+
+rule("hud debug")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global Variable(ServerLoadText) == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Host Player, Null, Custom String("Primary: {0}", Is Firing Primary(Host Player), Null, Null), Null, Top, 10, White,
+			White, White, Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, Null, Custom String("Secondary: {0}", Is Firing Secondary(Host Player), Null, Null), Null, Top, 10,
+			White, White, White, Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, Null, Custom String("1: {0}", Is Using Ability 1(Host Player), Null, Null), Null, Top, 10, White,
+			White, White, Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, Null, Custom String("2: {0}", Is Using Ability 2(Host Player), Null, Null), Null, Top, 10, White,
+			White, White, Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, Null, Custom String("ult: {0}", Is Using Ultimate(Host Player), Null, Null), Null, Top, 10, White,
+			White, White, Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, Custom String("Peak: {0}", Server Load Peak, Null, Null), Custom String("Average: {0}",
+			Server Load Average, Null, Null), Custom String("Current: {0}", Server Load, Null, Null), Top, -30.000, White, White, White,
+			Visible To and String, Default Visibility);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("========================[] PLACEHOLDERS")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+}
+
+disabled rule("==============[] Character")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+disabled rule("Initialize Character")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Compare(Is Game In Progress, !=, True), 1);
+		Wait(Add(Multiply(0.001, Slot Of(Event Player)), 0.016), Ignore Condition);
+		Wait(0.016, Ignore Condition);
+		Heal(Event Player, Null, Multiply(Max Health(Event Player), 100));
+	}
+}
+
+disabled rule("HUD")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Alive(Event Player) == True;
+		Value In Array(Player Variable(Event Player, HudText), 0) != True;
+	}
+
+	actions
+	{
+		Wait(0.016, Ignore Condition);
+		Create HUD Text(Filtered Array(Filtered Array(Event Player, Compare(Value In Array(Player Variable(Event Player, AbilityCooldowns),
+			1), ==, 0)), Compare(Hero Of(Event Player), ==, Hero(Ana))), Null, Custom String("Placeholder", Null, Null, Null),
+			Custom String("(Aka this isnt finished)", Null, Null, Null), Left, -3.000, Red, Red, Red, Visible To and String,
+			Default Visibility);
+		Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+disabled rule("")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("========================[] New/Testing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+}
+
+rule("effect testing (WB)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Wrecking Ball;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+	}
+
+	actions
+	{
+		Create Effect(All Players(All Teams), Sphere, Green, Event Player, 1, None);
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Add, 1);
+		Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+	}
+}
+
+rule("Destroy all effects upon death")
+{
+	event
+	{
+		Player Died;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Value In Array(Player Variable(Event Player, AbilityEffects), 0) != 0;
+	}
+
+	actions
+	{
+		Destroy Effect(Last Of(Player Variable(Event Player, AbilityEffects)));
+		Modify Player Variable(Event Player, AbilityEffects, Remove From Array By Value, Last Of(Player Variable(Event Player,
+			AbilityEffects)));
+		Modify Player Variable At Index(Event Player, AbilityEffects, 0, Subtract, 1);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
