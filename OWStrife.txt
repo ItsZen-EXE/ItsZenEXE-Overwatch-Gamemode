@@ -70,7 +70,8 @@ settings
 
 			Hanzo
 			{
-				Lunge Cooldown Time: 66%
+				Lunge Cooldown Time: 80%
+				Sonic Arrow Cooldown Time: 84%
 			}
 
 			Lúcio
@@ -97,6 +98,7 @@ settings
 
 			enabled heroes
 			{
+				Ana
 				Ashe
 				Bastion
 				Hanzo
@@ -482,6 +484,8 @@ rule("hud debug")
 		Create HUD Text(Host Player, Custom String("Peak: {0}", Server Load Peak, Null, Null), Custom String("Average: {0}",
 			Server Load Average, Null, Null), Custom String("Current: {0}", Server Load, Null, Null), Top, -30, White, White, White,
 			Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, Null, Custom String("Vert Facing Angle: {0}", Vertical Facing Angle Of(Host Player), Null, Null),
+			Null, Top, 10, White, White, White, Visible To and String, Default Visibility);
 	}
 }
 
@@ -554,7 +558,7 @@ rule("Setup = 15 seconds")
 	actions
 	{
 		Kill(All Players(All Teams), Null);
-		Set Match Time(3);
+		Set Match Time(7);
 	}
 }
 
@@ -1657,11 +1661,11 @@ rule("[McCree] Secondary Fire Start Reload/Stats")
 
 	actions
 	{
-		Set Player Variable At Index(Event Player, AbilityVariables, 1, 2.700);
+		Set Player Variable At Index(Event Player, AbilityVariables, 1, 2.400);
 		Set Ability 1 Enabled(Event Player, False);
 		Set Ability 2 Enabled(Event Player, False);
 		Disallow Button(Event Player, Ultimate);
-		Wait(0.275, Ignore Condition);
+		Wait(0.366, Ignore Condition);
 		Set Status(Event Player, Null, Stunned, 0.050);
 		Set Ability 1 Enabled(Event Player, True);
 		Set Ability 2 Enabled(Event Player, True);
@@ -1749,7 +1753,7 @@ rule("[McCree] Reload On Kill")
 	}
 }
 
-rule("[McCree] shot reloading")
+rule("[McCree] Shot reloading")
 {
 	event
 	{
@@ -1807,7 +1811,7 @@ rule("[McCree] Ult Stats")
 	}
 }
 
-rule("[McCree] Ult Stats")
+rule("[McCree] Ult Stats Reset")
 {
 	event
 	{
@@ -1905,7 +1909,6 @@ rule("[Pharah] Rocket Jumps/Pogo-Jumping/C-Taps allow market garden")
 
 	actions
 	{
-		Enable Inspector Recording;
 		Set Move Speed(Event Player, 125);
 		Set Player Variable(Event Player, IsStatsChanged, True);
 		If(Compare(Is Button Held(Event Player, Crouch), ==, True));
@@ -1926,7 +1929,6 @@ rule("[Pharah] Rocket Jumps/Pogo-Jumping/C-Taps allow market garden")
 					Event Player), Vector(0, 0.666, 0)), 1.500, To World, Incorporate Contrary Motion);
 			End;
 		End;
-		Disable Inspector Recording;
 	}
 }
 
@@ -1946,10 +1948,8 @@ rule("[Pharah] Rocket Jump Check false")
 
 	actions
 	{
-		Enable Inspector Recording;
 		Set Move Speed(Event Player, 100);
 		Set Player Variable At Index(Event Player, AbilityVariables, 1, Null);
-		Disable Inspector Recording;
 	}
 }
 
@@ -2267,5 +2267,29 @@ rule("[Hanzo] Set firing speed OOT")
 		End;
 		Wait(0.100, Ignore Condition);
 		Set Player Variable At Index(Event Player, IsUsingAbility, 2, False);
+	}
+}
+
+rule("[Ana Sleep Grenade] Scope Damage")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Ana;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+		Vertical Facing Angle Of(Event Player) >= 50;
+		Distance Between(Eye Position(Event Player), Ray Cast Hit Position(Eye Position(Event Player), Add(Eye Position(Event Player),
+			Multiply(Facing Direction Of(Event Player), 2)), All Players(All Teams), Event Player, True)) < 2.500;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Up, 15, To World, Cancel Contrary Motion);
+		Wait(2, Ignore Condition);
 	}
 }
