@@ -31,8 +31,8 @@ For this first official patch note that's being saved, I'm actually going to put
 
 #### General
 - Saying voiceline up will give per hero info
-	>Developer Comment:
-	>- This will allow players to quickly learn what each character does upon choosing them, as well as give tips
+>Developer Comment:
+>- This will allow players to quickly learn what each character does upon choosing them, as well as give tips
 - Pre-Match setup is 15 seconds down from 25
 
 
