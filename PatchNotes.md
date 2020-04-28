@@ -1,4 +1,5 @@
 
+
 # Patch Notes
 
 Hi! This is a file that will contain all patch notes for my gamemode! I will try to format these notes similarly to actual patch notes in Overwatch. Please contact me on discord, twitter, or even email me at ItsZenEXE@pm.me with "OWStrife" at the start of the subject line if you have any questions!
@@ -17,17 +18,19 @@ For this first official patch note that's being saved, I'm actually going to put
 - Added Optional Features
 	-   Added Debug mode on workshop maps
 		- This is **for testing only** and is disabled by default.
-		- Only works correctly for host player
-			- Attempting to use Debug Mode with more than just the host player can and will cause bugs!
+		- Added Debug Damage Testing bots
+		- Added Debug Status/Ability Testing bot
+		> Developer Comment:
+		>- These bots are extremely very primitive in it's current state. It only allows spawning 1 or 2 enemies at once that don't really do anything, and you need to edit the code for the center testing bot in order to make it do things. It currently is mainly for testing stun interactions, damage, and knockback.
+
 		- Debug mode auto-disables with more than the host player on the server
-	- Added Debug Damage Testing bots
-	- Added Debug Status/Ability Testing bot
-	>Developer Comment:
-	>- These bots are extremely very primitive in it's current state. It only allows spawning 1 or 2 enemies at once that don't really do anything, and you need to edit the code for the center testing bot in order to make it do things. It currently is mainly for testing stun interactions, damage, and knockback.
-- Added anti-crash system
-	- The game slows down upon reaching too high of a server load and returns to normal speed when it is able to handle everything more!
-- Added some host-only cheats
-	- These are disabled by default
+		> Developer Comment:
+		>- Attempting to use Debug Mode with more than just the host player can and will cause bugs!
+
+	- Added anti-crash system
+		- The game slows down upon reaching too high of a server load and returns to normal speed when it is able to handle everything more!
+	- Added some host-only cheats
+		- These are disabled by default
 
 #### General
 - Saying voiceline up will give per hero info

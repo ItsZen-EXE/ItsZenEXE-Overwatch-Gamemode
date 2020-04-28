@@ -2,15 +2,14 @@ settings
 {
 	main
 	{
-		Description: "Please contact me on discord, twitter, or even email me at ItsZenEXE@pm.me with \"OWStrife\" at the start of the subject line if you have any questions!"
+		Description: "Please contact me on discord (ItsZen_EXE#0057), twitter (@ItsZen_EXE), or even email me at ItsZenEXE@pm.me with \"OWStrife\" at the start of the subject line if you have any questions!"
 	}
 
 	lobby
 	{
 		Map Rotation: After A Game
 		Match Voice Chat: Enabled
-		Max FFA Players: 8
-		Max Spectators: 6
+		Max Spectators: 4
 		Return To Lobby: Never
 		Swap Teams After Match: No
 		Use Experimental Update If Available: Yes
@@ -20,8 +19,12 @@ settings
 	{
 		Deathmatch
 		{
-			enabled maps
+			disabled maps
 			{
+				Workshop Chamber
+				Workshop Expanse
+				Workshop Expanse Night
+				Workshop Island
 				Workshop Island Night
 			}
 		}
@@ -34,7 +37,7 @@ settings
 
 		General
 		{
-			Game Mode Start: Manual
+			Game Mode Start: Immediately
 			Hero Limit: Off
 			Spawn Health Packs: Enabled
 		}
@@ -157,7 +160,7 @@ rule("[Disable Inspector Recording]")
 	}
 }
 
-rule("[Enable Debug On Workshop Maps & Check for if Debug needs Disabled due to number of players]")
+disabled rule("[Enable Debug On Workshop Maps & Check for if Debug needs Disabled due to number of players]")
 {
 	event
 	{
@@ -187,7 +190,7 @@ rule("[Enable Debug On Workshop Maps & Check for if Debug needs Disabled due to 
 	}
 }
 
-rule("[Enable Host Cheats]")
+disabled rule("[Enable Host Cheats]")
 {
 	event
 	{
@@ -200,7 +203,7 @@ rule("[Enable Host Cheats]")
 	}
 }
 
-rule("[Enable ServerLoadCheck]")
+disabled rule("[Enable ServerLoadCheck]")
 {
 	event
 	{
@@ -210,6 +213,25 @@ rule("[Enable ServerLoadCheck]")
 	actions
 	{
 		Global.ServerLoadText = True;
+	}
+}
+
+disabled rule("[Enable Fast Setup Time]")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Kill(All Players(All Teams), Null);
+		Set Match Time(15);
 	}
 }
 
@@ -604,25 +626,6 @@ rule("!!! Anti Crash Reset After Returned to Normal !!!")
 	{
 		Set Slow Motion(100);
 		Global.antiCrashActive = False;
-	}
-}
-
-disabled rule("Setup = 15 seconds")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-
-	conditions
-	{
-		Is Assembling Heroes == True;
-	}
-
-	actions
-	{
-		Kill(All Players(All Teams), Null);
-		Set Match Time(15);
 	}
 }
 
