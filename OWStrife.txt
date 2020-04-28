@@ -1991,7 +1991,7 @@ rule("[Lucio] Damage Boost song replaces heal song")
 
 	actions
 	{
-		Set Damage Dealt(Event Player, 0.250 * 100 + 100);
+		Set Damage Dealt(Event Player, 125);
 		Event Player.IsUsingAbility[1] = False;
 	}
 }
@@ -2014,7 +2014,7 @@ rule("[Lucio] Amp Damage Boost")
 	actions
 	{
 		Event Player.IsUsingAbility[1] = False;
-		Set Damage Dealt(Event Player, 0.500 * 100 + 100);
+		Set Damage Dealt(Event Player, 150);
 		Wait(0.016, Ignore Condition);
 		Loop If Condition Is True;
 		Skip If(Is Using Ability 1(Event Player) == False, 1);
