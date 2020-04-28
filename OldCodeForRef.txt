@@ -1,0 +1,216 @@
+variables
+{
+	player:
+		1: IsUsingAbility
+		3: AbilityVariables
+		4: AbilityEffects
+}
+
+rule("[Hanzo] Piercing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Primary Fire) == True;
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Good Explosion, Red, Ray Cast Hit Position(Vector(0, 0, 0), Vector(0, 0, 0), All Players(
+			All Teams), Event Player, True), 0.100);
+		Event Player.AbilityVariables[1] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player)
+			+ Facing Direction Of(Event Player) * 100, All Players(All Teams), Event Player, True);
+		Event Player.AbilityVariables[2] = Event Player.AbilityVariables[1] + Facing Direction Of(Event Player) * 2.700;
+		Event Player.AbilityVariables[3] = Ray Cast Hit Player(Event Player.AbilityVariables[2],
+			Event Player.AbilityVariables[2] + Facing Direction Of(Event Player) * 100, All Players(All Teams), Event Player, True);
+		Event Player.AbilityVariables[4] = Ray Cast Hit Position(Event Player.AbilityVariables[2],
+			Event Player.AbilityVariables[2] + Facing Direction Of(Event Player) * 1000, All Players(All Teams), Event Player, True);
+		Play Effect(All Players(All Teams), Good Explosion, Red, Event Player.AbilityVariables[1], 0.200);
+		Play Effect(All Players(All Teams), Good Explosion, Red, Event Player.AbilityVariables[4], 0.100);
+		Event Player.IsUsingAbility[1] = True;
+		Wait(0.300, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[Hanzo] Storm Arrow apply damage Headshot")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Distance Between(Event Player.AbilityVariables[4], Eye Position(Event Player.AbilityVariables[3])) < 0.400;
+		disabled Is Using Ability 2(Event Player) == True;
+		Event Player.IsUsingAbility[1] == True;
+		Event Player.IsUsingAbility[2] == True;
+	}
+
+	actions
+	{
+		"Event was headshot"
+		If(Distance Between(Event Player.AbilityVariables[4], Eye Position(Event Player.AbilityVariables[3])) < 0.400);
+			Damage(Event Player.AbilityVariables[3], Event Player, 60);
+		"Event was NOT headshot"
+		Else If(Distance Between(Event Player.AbilityVariables[4], Eye Position(Event Player.AbilityVariables[3])) >= 0.400);
+			Damage(Event Player.AbilityVariables[3], Event Player, 30);
+		End;
+		Wait(0.300, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[Hanzo] Stop firing arrow in var")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Primary Fire) == False;
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.IsUsingAbility[1] = False;
+		Cancel Primary Action(Event Player);
+	}
+}
+
+rule("[Hanzo] Set firing speed Storm")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Projectile Speed(Event Player, 100 * 10000);
+		Event Player.IsUsingAbility[2] = True;
+	}
+}
+
+rule("[Hanzo] 2nd arrow beam")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Event Player.IsUsingAbility[1] == True;
+		Event Player.IsUsingAbility[2] == True;
+	}
+
+	actions
+	{
+		Create Beam Effect(All Players(All Teams), Bad Beam, Event Player.AbilityVariables[2], Event Player.AbilityVariables[4], Red,
+			Visible To Position and Radius);
+		Event Player.AbilityEffects[1] = Last Created Entity;
+		Wait(0.150, Ignore Condition);
+		Destroy Effect(Event Player.AbilityEffects[1]);
+		Modify Player Variable(Event Player, AbilityEffects, Remove From Array By Value, Last Of(Event Player.AbilityEffects));
+		Wait(0.150, Restart When True);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[Hanzo] Set firing speed OOT")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Hanzo;
+	}
+
+	conditions
+	{
+		Event Player.IsUsingAbility[2] == True;
+		Is Using Ability 2(Event Player) == False;
+	}
+
+	actions
+	{
+		If(Is Button Held(Event Player, Primary Fire) == False);
+			Event Player.IsUsingAbility[1] = False;
+			Event Player.IsUsingAbility[2] = False;
+			Set Projectile Speed(Event Player, 100);
+		Else If(Is Button Held(Event Player, Primary Fire) == True);
+			Event Player.IsUsingAbility[1] = True;
+			Set Projectile Speed(Event Player, 100);
+			Wait(0.050, Ignore Condition);
+			Event Player.IsUsingAbility[1] = False;
+		End;
+		Wait(0.100, Ignore Condition);
+		Event Player.IsUsingAbility[2] = False;
+	}
+}
+
+
+
+variables
+{
+	player:
+		3: AbilityVariables
+}
+
+actions
+{
+	Damage(Event Player, Null, 10 + Distance Between(Attacker.AbilityVariables[1], Position Of(Event Player)) / 4 * 200);
+}
+
+variables
+{
+	player:
+		3: AbilityVariables
+}
+
+actions
+{
+	Damage(Event Player, Null, 10 + (200 - Distance Between(Attacker.AbilityVariables[1], Position Of(Event Player)) / 4 * 200));
+}
+
+variables
+{
+	player:
+		3: AbilityVariables
+}
+
+actions
+{
+	Damage(Event Player, Attacker, (19 + (60 - Distance Between(Attacker.AbilityVariables[1], Position Of(Event Player)) / 4 * 60))
+		/ 0.500);
+}
+
+actions
+{
+	Wait(19 + (60 - Distance Between(Attacker.AbilityVariables[1], Position Of(Event Player)) / 4 * 60) / 0.500, Ignore Condition);
+}
