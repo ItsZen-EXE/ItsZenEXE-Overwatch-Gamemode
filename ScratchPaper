@@ -1,0 +1,98 @@
+
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+subroutines
+{
+	3: InfoHUDHandler
+}
+
+rule("Info Handler")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Voice Line Up) == True;
+	}
+
+	actions
+	{
+		Start Rule(InfoHUDHandler, Restart Rule);
+
+
+		Else If(Hero Of(Event Player) == Hero(Ashe));
+			Small Message(Event Player, Custom String("You can shoot {1} twice in a row! {0}", Hero Icon String(Hero Of(Event Player)),
+				Ability Icon String(Hero(Ashe), Button(Ability 1))));
+
+
+
+		Else If(Hero Of(Event Player) == Hero(Bastion));
+			Small Message(Event Player, Custom String("{1} has limited ammo {0}", Hero Icon String(Hero Of(Event Player)), Ability Icon String(
+				Hero(Bastion), Button(Ability 1))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("Can only {1} into {2} at 100% ammo {0}", Hero Icon String(Hero Of(Event Player)),
+				Ability Icon String(Hero(Bastion), Button(Ability 1)), Ability Icon String(Hero(Bastion), Button(Primary Fire))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("Holding Jump in {1} moves you forward! {0}", Hero Icon String(Hero Of(Event Player)),
+				Ability Icon String(Hero(Bastion), Button(Primary Fire))));
+
+
+		Else If(Hero Of(Event Player) == Hero(McCree));
+			Small Message(Event Player, Custom String("{1} is cooldown based {0}", Hero Icon String(Hero Of(Event Player)),
+				Ability Icon String(Hero(McCree), Button(Primary Fire))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("{1} reset your bullet cooldown entirely {0}", Hero Icon String(Hero Of(Event Player)),
+				String("{0}, {1}, and {2}", Ability Icon String(Hero(McCree), Button(Ability 1)), Ability Icon String(Hero(McCree), Button(
+				Ability 2)), Ability Icon String(Hero(McCree), Button(Ultimate)))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("Headshots and kills reduce all cooldowns {0}", Hero Icon String(Hero Of(
+				Event Player))));
+
+
+
+		Else If(Hero Of(Event Player) == Hero(Lúcio));
+			Small Message(Event Player, Custom String("{1} {2} Heal song no longer heals {0}", Hero Icon String(Hero Of(Event Player)),
+				Ability Icon String(Hero(Lúcio), Button(Ability 1)), Ability Icon String(Hero(Lúcio), Button(Ability 2))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("{1} {2} Heal song now boosts damage {0}", Hero Icon String(Hero Of(Event Player)),
+				Ability Icon String(Hero(Lúcio), Button(Ability 1)), Ability Icon String(Hero(Lúcio), Button(Ability 2))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("{1} knocks enemies within your song radius upward {0}", Hero Icon String(Hero Of(
+				Event Player)), Ability Icon String(Hero(Lúcio), Button(Ultimate))));
+
+
+
+		Else If(Hero Of(Event Player) == Hero(Hanzo));
+			Small Message(Event Player, Custom String("{1} causes small explosions {0}", Hero Icon String(Hero Of(Event Player)),
+				Ability Icon String(Hero(Hanzo), Button(Ability 2))));
+
+
+
+		Else If(Hero Of(Event Player) == Hero(Pharah));
+			Small Message(Event Player, Custom String("Primary fire rockets do very little self-damage {0}", Hero Icon String(Hero Of(
+				Event Player))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("Rocket jumps have new physics, and change depending on Crouch and Jump {0}",
+				Hero Icon String(Hero Of(Event Player))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("Crouch allows pogo-jumps {0}", Hero Icon String(Hero Of(Event Player))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("Hold Jump + Crouch for a C-Tap {0}", Hero Icon String(Hero Of(Event Player))));
+			Wait(3, Ignore Condition);
+			Small Message(Event Player, Custom String("C-Tap jumps allow for a Market Garden {0} ", Hero Icon String(Hero Of(Event Player))));
+
+
+
+		Else;
+			Small Message(Event Player, Custom String("No Per-Hero info for this charactet (yet) {0}", Hero Icon String(Hero Of(
+				Event Player))));
+	}
+}
