@@ -142,6 +142,7 @@ variables
 		10: DamageModReciever
 		11: DamageModAttacker
 		12: InfoHUDText
+		26: RulerPointer
 		30: RulerMode
 		31: RulerState
 		32: p1
@@ -160,7 +161,7 @@ subroutines
 	4: InfoHUDHandler
 }
 
-rule("[Disable Inspector Recording]")
+disabled rule("[Disable Inspector Recording]")
 {
 	event
 	{
@@ -389,9 +390,11 @@ rule("[Ruler] Turn Ruler On")
 			Sine From Degrees(-90 + Horizontal Facing Angle Of(Event Player)), 0.500, Cosine From Degrees(-90 + Horizontal Facing Angle Of(
 			Event Player))), Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
 			Event Player) * 1000, All Players(All Teams), Event Player, True), White, Visible To Position and Radius);
+		Event Player.RulerPointer[0] = Last Created Entity;
 		Create Effect(Filtered Array(All Players(All Teams), Event Player.RulerMode == True), Sphere, White, Ray Cast Hit Position(
 			Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player) * 1000, All Players(All Teams),
 			Event Player, True), 0.200, Visible To Position and Radius);
+		Event Player.RulerPointer[1] = Last Created Entity;
 	}
 }
 
@@ -415,10 +418,11 @@ rule("[Ruler] Place p1")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p1 = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player)
-			* 1000, All Players(All Teams), Event Player, True);
+		Event Player.p1[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(All Teams), Event Player, True);
 		Event Player.RulerState = 2;
 		Create Effect(Event Player, Orb, Orange, Event Player.p1, 1, Visible To Position and Radius);
+		Event Player.p1[2] = Last Created Entity;
 	}
 }
 
@@ -442,11 +446,13 @@ rule("[Ruler] Place p2")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p2 = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player)
-			* 1000, All Players(All Teams), Event Player, True);
+		Event Player.p2[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(All Teams), Event Player, True);
 		Event Player.RulerState = 3;
 		Create Effect(Event Player, Orb, Aqua, Event Player.p2, 1, Visible To Position and Radius);
+		Event Player.p2[1] = Last Created Entity;
 		Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p2, Aqua, Visible To Position and Radius);
+		Event Player.p2[2] = Last Created Entity;
 	}
 }
 
@@ -470,7 +476,14 @@ rule("[Ruler] Destroy Ruler")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Destroy All Effects;
+		Destroy Effect(Event Player.p1[2]);
+		Destroy Effect(Event Player.p2[1]);
+		Destroy Effect(Event Player.p2[2]);
+		Destroy Effect(Event Player.p3[1]);
+		Destroy Effect(Event Player.p3[2]);
+		Destroy Effect(Event Player.RulerPointer[0]);
+		Destroy Effect(Event Player.RulerPointer[1]);
+		Wait(0.016, Ignore Condition);
 		Event Player.RulerState = 0;
 		Event Player.p1 = Null;
 		Event Player.p2 = Null;
@@ -499,8 +512,8 @@ rule("[Ruler] Set Y of p2 & p3 to Y of P1")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p2 = Vector(X Component Of(Event Player.p2), Y Component Of(Event Player.p1), Z Component Of(Event Player.p2));
-		Event Player.p3 = Vector(X Component Of(Event Player.p3), Y Component Of(Event Player.p1), Z Component Of(Event Player.p3));
+		Event Player.p2[0] = Vector(X Component Of(Event Player.p2), Y Component Of(Event Player.p1), Z Component Of(Event Player.p2));
+		Event Player.p3[0] = Vector(X Component Of(Event Player.p3), Y Component Of(Event Player.p1), Z Component Of(Event Player.p3));
 	}
 }
 
@@ -524,11 +537,13 @@ rule("[Ruler] Place p3")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Skip If(Event Player.p3 != Null, 2);
+		Skip If(Event Player.p3 != Null, 4);
 		Create Effect(Event Player, Orb, Green, Event Player.p3, 1, Visible To Position and Radius);
+		Event Player.p3[1] = Last Created Entity;
 		Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p3, Green, Visible To Position and Radius);
-		Event Player.p3 = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player)
-			* 1000, All Players(All Teams), Event Player, True);
+		Event Player.p3[2] = Last Created Entity;
+		Event Player.p3[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(All Teams), Event Player, True);
 	}
 }
 
@@ -621,7 +636,7 @@ rule("[Ruler] Place p3 on opposite wall of p1 and p2")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p3 = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(
+		Event Player.p3[0] = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(
 			-90 + Horizontal Angle From Direction(Direction Towards(Event Player.p1, Event Player.p2)), 0) * 1000, All Players(All Teams),
 			Event Player, True);
 		disabled Create Effect(Event Player, Orb, Green, Event Player.p3, 1, Visible To Position and Radius);
@@ -651,10 +666,10 @@ rule("[Ruler] Place p3 on floor below p1")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p3 = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(0, 90) * 1000, All Players(
-			All Teams), Event Player, True);
 		disabled Create Effect(Event Player, Orb, Green, Event Player.p3, 1, Visible To Position and Radius);
 		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p3, Green, Visible To Position and Radius);
+		Event Player.p3[0] = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(0, 90) * 1000, All Players(
+			All Teams), Event Player, True);
 	}
 }
 
@@ -680,10 +695,10 @@ rule("[Ruler] Place p3 on ceiling above p1")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p3 = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(0, -90) * 1000, All Players(
-			All Teams), Event Player, True);
 		disabled Create Effect(Event Player, Orb, Green, Event Player.p3, 1, Visible To Position and Radius);
 		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p3, Green, Visible To Position and Radius);
+		Event Player.p3[0] = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(0, -90) * 1000, All Players(
+			All Teams), Event Player, True);
 	}
 }
 
