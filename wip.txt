@@ -89,6 +89,15 @@ settings
 				No Ammunition Requirement: On
 			}
 
+			Mei
+			{
+				Cryo-Freeze Cooldown Time: 91%
+				Damage Dealt: 86%
+				Healing Dealt: 170%
+				Health: 140%
+				Ice Wall Cooldown Time: 77%
+			}
+
 			Pharah
 			{
 				Ammunition Clip Size Scalar: 67%
@@ -109,6 +118,7 @@ settings
 				Hanzo
 				Lúcio
 				McCree
+				Mei
 				Pharah
 			}
 		}
@@ -125,8 +135,8 @@ variables
 		4: ShortCooldownsEnabled
 		5: RulerEnabled
 		6: DebugHUD
-		9: ServerLoadText
-		50: antiCrashActive
+		7: ServerLoadText
+		8: antiCrashActive
 
 	player:
 		0: HudText
@@ -137,19 +147,19 @@ variables
 		5: AbilityVariableChase_I
 		6: AbilityVariableChase_II
 		7: IsStatsChanged
-		8: DamageModID
-		9: DamageModAmmount
-		10: DamageModReciever
-		11: DamageModAttacker
-		12: InfoHUDText
-		26: RulerPointer
-		30: RulerMode
-		31: RulerState
-		32: p1
-		33: p2
-		34: p3
-		35: Angle
-		40: fastcooldowns
+		8: InfoHUDText
+		9: FastCooldownsToggle
+		10: HEROPharahSelfDamageModID
+		11: HEROMeiChilledDebuff
+		12: HEROMeiChilledPassive
+		13: HEROMeiIceWall
+		30: RulerPointer
+		31: RulerMode
+		32: RulerState
+		33: RulerPos1
+		34: RulerPos2
+		35: RulerPos3
+		36: RulerAngle
 }
 
 subroutines
@@ -159,6 +169,7 @@ subroutines
 	2: HUDHandler
 	3: InfoHUDDespawner
 	4: InfoHUDHandler
+	5: HEROMeiIceWallStats
 }
 
 disabled rule("[Disable Inspector Recording]")
@@ -273,14 +284,14 @@ rule("[Ruler] HUD text")
 		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Null, Custom String(
 			"Interact = Enable/Disable Ruler Mode"), Left, -1, White, White, White, Visible To and String, Default Visibility);
 		"p1"
-		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.p1, Custom String("Primary Fire"),
-			Custom String("p1"), Left, 1, Orange, Orange, Orange, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.RulerPos1, Custom String(
+			"Primary Fire"), Custom String("p1"), Left, 1, Orange, Orange, Orange, Visible To and String, Default Visibility);
 		"p2"
-		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.p2, Custom String("Primary fire"),
-			Custom String("p2"), Left, 2, Aqua, Aqua, Aqua, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.RulerPos2, Custom String(
+			"Primary fire"), Custom String("p2"), Left, 2, Aqua, Aqua, Aqua, Visible To and String, Default Visibility);
 		"p3"
-		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.p3, Custom String("Secondary Fire"),
-			Custom String("p3"), Left, 3, Green, Green, Green, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.RulerPos3, Custom String(
+			"Secondary Fire"), Custom String("p3"), Left, 3, Green, Green, Green, Visible To and String, Default Visibility);
 		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String("Reload = p3 == p1 UP"), Null,
 			Left, 4, Green, Green, Green, Visible To and String, Default Visibility);
 		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String(
@@ -288,15 +299,15 @@ rule("[Ruler] HUD text")
 		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String(
 			"Melee = p3 on opposite wall of p1 & p2"), Null, Left, 6, Green, Green, Green, Visible To and String, Default Visibility);
 		"Dist"
-		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Distance Between(Event Player.p1, Event Player.p2),
-			Custom String("distance from"), Custom String("p1 to p2"), Top, 1, White, White, White, Visible To and String,
-			Default Visibility);
-		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Distance Between(Event Player.p1, Event Player.p3),
-			Custom String("distance from"), Custom String("p1 to p3"), Top, 2, White, White, White, Visible To and String,
-			Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Distance Between(Event Player.RulerPos1,
+			Event Player.RulerPos2), Custom String("distance from"), Custom String("p1 to p2"), Top, 1, White, White, White,
+			Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Distance Between(Event Player.RulerPos1,
+			Event Player.RulerPos3), Custom String("distance from"), Custom String("p1 to p3"), Top, 2, White, White, White,
+			Visible To and String, Default Visibility);
 		"angle"
-		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.Angle, Null, Custom String("Angle"),
-			Right, 0, Orange, White, Orange, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.RulerAngle, Null, Custom String(
+			"Angle"), Right, 0, Orange, White, Orange, Visible To and String, Default Visibility);
 		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String("Ability 1 = horizontal angle"),
 			Null, Right, 1, Orange, Orange, Orange, Visible To and String, Default Visibility);
 		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String("Ability 2 = vertical angle"),
@@ -418,11 +429,11 @@ rule("[Ruler] Place p1")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p1[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+		Event Player.RulerPos1[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
 			Event Player) * 1000, All Players(All Teams), Event Player, True);
 		Event Player.RulerState = 2;
-		Create Effect(Event Player, Orb, Orange, Event Player.p1, 1, Visible To Position and Radius);
-		Event Player.p1[2] = Last Created Entity;
+		Create Effect(Event Player, Orb, Orange, Event Player.RulerPos1, 1, Visible To Position and Radius);
+		Event Player.RulerPos1[2] = Last Created Entity;
 	}
 }
 
@@ -446,13 +457,14 @@ rule("[Ruler] Place p2")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p2[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+		Event Player.RulerPos2[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
 			Event Player) * 1000, All Players(All Teams), Event Player, True);
 		Event Player.RulerState = 3;
-		Create Effect(Event Player, Orb, Aqua, Event Player.p2, 1, Visible To Position and Radius);
-		Event Player.p2[1] = Last Created Entity;
-		Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p2, Aqua, Visible To Position and Radius);
-		Event Player.p2[2] = Last Created Entity;
+		Create Effect(Event Player, Orb, Aqua, Event Player.RulerPos2, 1, Visible To Position and Radius);
+		Event Player.RulerPos2[1] = Last Created Entity;
+		Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos2, Aqua,
+			Visible To Position and Radius);
+		Event Player.RulerPos2[2] = Last Created Entity;
 	}
 }
 
@@ -476,19 +488,19 @@ rule("[Ruler] Destroy Ruler")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Destroy Effect(Event Player.p1[2]);
-		Destroy Effect(Event Player.p2[1]);
-		Destroy Effect(Event Player.p2[2]);
-		Destroy Effect(Event Player.p3[1]);
-		Destroy Effect(Event Player.p3[2]);
+		Destroy Effect(Event Player.RulerPos1[2]);
+		Destroy Effect(Event Player.RulerPos2[1]);
+		Destroy Effect(Event Player.RulerPos2[2]);
+		Destroy Effect(Event Player.RulerPos3[1]);
+		Destroy Effect(Event Player.RulerPos3[2]);
 		Destroy Effect(Event Player.RulerPointer[0]);
 		Destroy Effect(Event Player.RulerPointer[1]);
 		Wait(0.016, Ignore Condition);
 		Event Player.RulerState = 0;
-		Event Player.p1 = Null;
-		Event Player.p2 = Null;
-		Event Player.p3 = Null;
-		Event Player.Angle = 0;
+		Event Player.RulerPos1 = Null;
+		Event Player.RulerPos2 = Null;
+		Event Player.RulerPos3 = Null;
+		Event Player.RulerAngle = 0;
 	}
 }
 
@@ -512,8 +524,10 @@ rule("[Ruler] Set Y of p2 & p3 to Y of P1")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p2[0] = Vector(X Component Of(Event Player.p2), Y Component Of(Event Player.p1), Z Component Of(Event Player.p2));
-		Event Player.p3[0] = Vector(X Component Of(Event Player.p3), Y Component Of(Event Player.p1), Z Component Of(Event Player.p3));
+		Event Player.RulerPos2[0] = Vector(X Component Of(Event Player.RulerPos2), Y Component Of(Event Player.RulerPos1), Z Component Of(
+			Event Player.RulerPos2));
+		Event Player.RulerPos3[0] = Vector(X Component Of(Event Player.RulerPos3), Y Component Of(Event Player.RulerPos1), Z Component Of(
+			Event Player.RulerPos3));
 	}
 }
 
@@ -537,12 +551,13 @@ rule("[Ruler] Place p3")
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Skip If(Event Player.p3 != Null, 4);
-		Create Effect(Event Player, Orb, Green, Event Player.p3, 1, Visible To Position and Radius);
-		Event Player.p3[1] = Last Created Entity;
-		Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p3, Green, Visible To Position and Radius);
-		Event Player.p3[2] = Last Created Entity;
-		Event Player.p3[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+		Skip If(Event Player.RulerPos3 != Null, 4);
+		Create Effect(Event Player, Orb, Green, Event Player.RulerPos3, 1, Visible To Position and Radius);
+		Event Player.RulerPos3[1] = Last Created Entity;
+		Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos3, Green,
+			Visible To Position and Radius);
+		Event Player.RulerPos3[2] = Last Created Entity;
+		Event Player.RulerPos3[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
 			Event Player) * 1000, All Players(All Teams), Event Player, True);
 	}
 }
@@ -561,13 +576,13 @@ rule("[Ruler] Measure Angles Between p1 & p2")
 		Event Player.RulerMode == 1;
 		Is Button Held(Event Player, Ability 1) == True;
 		Event Player.RulerState == 3;
-		Event Player.p3 != 0;
+		Event Player.RulerPos3 != 0;
 	}
 
 	actions
 	{
-		Event Player.Angle = Vertical Angle From Direction(Direction Towards(Event Player.p1, Event Player.p2))
-			- Vertical Angle From Direction(Direction Towards(Event Player.p1, Event Player.p3));
+		Event Player.RulerAngle = Vertical Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos2))
+			- Vertical Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos3));
 	}
 }
 
@@ -582,12 +597,12 @@ rule("[Ruler] Measure Angles (part 2)")
 
 	conditions
 	{
-		Event Player.Angle < -0.001;
+		Event Player.RulerAngle < -0.001;
 	}
 
 	actions
 	{
-		Event Player.Angle = Event Player.Angle * -1;
+		Event Player.RulerAngle = Event Player.RulerAngle * -1;
 	}
 }
 
@@ -605,13 +620,13 @@ rule("[Ruler] Measure Angles Between p1 & p3")
 		Event Player.RulerMode == 1;
 		Is Button Held(Event Player, Ability 2) == True;
 		Event Player.RulerState == 3;
-		Event Player.p3 != 0;
+		Event Player.RulerPos3 != 0;
 	}
 
 	actions
 	{
-		Event Player.Angle = Horizontal Angle From Direction(Direction Towards(Event Player.p1, Event Player.p2))
-			- Horizontal Angle From Direction(Direction Towards(Event Player.p1, Event Player.p3));
+		Event Player.RulerAngle = Horizontal Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos2))
+			- Horizontal Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos3));
 	}
 }
 
@@ -629,18 +644,19 @@ rule("[Ruler] Place p3 on opposite wall of p1 and p2")
 		Event Player.RulerMode == 1;
 		Is Button Held(Event Player, Melee) == True;
 		Event Player.RulerState == 3;
-		Event Player.p3 != Null;
+		Event Player.RulerPos3 != Null;
 	}
 
 	actions
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		Event Player.p3[0] = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(
-			-90 + Horizontal Angle From Direction(Direction Towards(Event Player.p1, Event Player.p2)), 0) * 1000, All Players(All Teams),
-			Event Player, True);
-		disabled Create Effect(Event Player, Orb, Green, Event Player.p3, 1, Visible To Position and Radius);
-		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p3, Green, Visible To Position and Radius);
+		Event Player.RulerPos3[0] = Ray Cast Hit Position(Event Player.RulerPos1, Event Player.RulerPos1 + Direction From Angles(
+			-90 + Horizontal Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos2)), 0) * 1000,
+			All Players(All Teams), Event Player, True);
+		disabled Create Effect(Event Player, Orb, Green, Event Player.RulerPos3, 1, Visible To Position and Radius);
+		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos3, Green,
+			Visible To Position and Radius);
 	}
 }
 
@@ -659,17 +675,18 @@ rule("[Ruler] Place p3 on floor below p1")
 		Is Button Held(Event Player, Reload) == True;
 		Event Player.RulerState == 3;
 		Is Crouching(Event Player) == True;
-		Event Player.p3 != Null;
+		Event Player.RulerPos3 != Null;
 	}
 
 	actions
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		disabled Create Effect(Event Player, Orb, Green, Event Player.p3, 1, Visible To Position and Radius);
-		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p3, Green, Visible To Position and Radius);
-		Event Player.p3[0] = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(0, 90) * 1000, All Players(
-			All Teams), Event Player, True);
+		disabled Create Effect(Event Player, Orb, Green, Event Player.RulerPos3, 1, Visible To Position and Radius);
+		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos3, Green,
+			Visible To Position and Radius);
+		Event Player.RulerPos3[0] = Ray Cast Hit Position(Event Player.RulerPos1, Event Player.RulerPos1 + Direction From Angles(0, 90)
+			* 1000, All Players(All Teams), Event Player, True);
 	}
 }
 
@@ -688,17 +705,18 @@ rule("[Ruler] Place p3 on ceiling above p1")
 		Is Button Held(Event Player, Reload) == True;
 		Event Player.RulerState == 3;
 		Is Crouching(Event Player) == False;
-		Event Player.p3 != Null;
+		Event Player.RulerPos3 != Null;
 	}
 
 	actions
 	{
 		Wait(0.250, Ignore Condition);
 		Loop If Condition Is True;
-		disabled Create Effect(Event Player, Orb, Green, Event Player.p3, 1, Visible To Position and Radius);
-		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.p1, Event Player.p3, Green, Visible To Position and Radius);
-		Event Player.p3[0] = Ray Cast Hit Position(Event Player.p1, Event Player.p1 + Direction From Angles(0, -90) * 1000, All Players(
-			All Teams), Event Player, True);
+		disabled Create Effect(Event Player, Orb, Green, Event Player.RulerPos3, 1, Visible To Position and Radius);
+		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos3, Green,
+			Visible To Position and Radius);
+		Event Player.RulerPos3[0] = Ray Cast Hit Position(Event Player.RulerPos1, Event Player.RulerPos1 + Direction From Angles(0, -90)
+			* 1000, All Players(All Teams), Event Player, True);
 	}
 }
 
@@ -722,11 +740,11 @@ rule("[ShortCooldowns] Enable/Disable using ult charge saying")
 		If(Is In Spawn Room(Event Player));
 			Small Message(Event Player, Custom String("Unable to enable short cooldowns (In Spawn)"));
 		Else;
-			If(Event Player.fastcooldowns == False);
+			If(Event Player.FastCooldownsToggle == False);
 				Small Message(Event Player, Custom String("Short-Cooldowns Enabled (wait 4s to disable)"));
-				Event Player.fastcooldowns = True;
+				Event Player.FastCooldownsToggle = True;
 			Else;
-				Event Player.fastcooldowns = False;
+				Event Player.FastCooldownsToggle = False;
 				Small Message(Event Player, Custom String("Short-Cooldowns Disabled (wait 4s to enable)"));
 	}
 }
@@ -743,7 +761,7 @@ rule("[ShortCooldowns] secondary fire")
 	conditions
 	{
 		Ability Cooldown(Event Player, Button(Secondary Fire)) > 1.500;
-		Event Player.fastcooldowns == True;
+		Event Player.FastCooldownsToggle == True;
 	}
 
 	actions
@@ -766,7 +784,7 @@ rule("[ShortCooldowns] ability 1")
 	conditions
 	{
 		Ability Cooldown(Event Player, Button(Ability 1)) > 1.500;
-		Event Player.fastcooldowns == True;
+		Event Player.FastCooldownsToggle == True;
 	}
 
 	actions
@@ -789,7 +807,7 @@ rule("[ShortCooldowns] ability 2")
 	conditions
 	{
 		Ability Cooldown(Event Player, Button(Ability 2)) > 1.500;
-		Event Player.fastcooldowns == True;
+		Event Player.FastCooldownsToggle == True;
 	}
 
 	actions
@@ -812,7 +830,7 @@ rule("[ShortCooldowns] ult")
 	conditions
 	{
 		Ultimate Charge Percent(Event Player) != 100;
-		Event Player.fastcooldowns == True;
+		Event Player.FastCooldownsToggle == True;
 	}
 
 	actions
@@ -840,7 +858,7 @@ rule("[ShortCooldowns] crouch")
 	conditions
 	{
 		Ability Cooldown(Event Player, Button(Crouch)) > 1.500;
-		Event Player.fastcooldowns == True;
+		Event Player.FastCooldownsToggle == True;
 	}
 
 	actions
@@ -863,7 +881,7 @@ rule("[ShortCooldowns] Jump")
 	conditions
 	{
 		Ability Cooldown(Event Player, Button(Jump)) > 1.500;
-		Event Player.fastcooldowns == True;
+		Event Player.FastCooldownsToggle == True;
 	}
 
 	actions
@@ -1051,62 +1069,14 @@ rule("[Debug] Spawn Status/Ability Test Bot")
 		Play Effect(All Players(All Teams), Buff Explosion Sound, White, Event Player, 100);
 		Destroy All Dummy Bots;
 		Wait(0.250, Ignore Condition);
-		Create Dummy Bot(Hero(Roadhog), All Teams, 1, Vector(17.043, 1.424, -0.038), Direction Towards(Eye Position(Players In Slot(1,
+		Create Dummy Bot(Hero(Mei), All Teams, 1, Vector(17.043, 1.424, -0.038), Direction Towards(Eye Position(Players In Slot(1,
 			All Teams)), Vector(-95.785, 33.918, 73.376)));
 		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Eye Position(
 			Host Player)), 100, To World, Direction and Turn Rate);
 		Wait(2, Ignore Condition);
-		Start Holding Button(Players In Slot(1, All Teams), Ability 1);
+		Start Holding Button(Players In Slot(1, All Teams), Primary Fire);
 		Create HUD Text(Host Player, Custom String("{0} / {1} HP", Health(Players In Slot(1, All Teams)), Max Health(Players In Slot(1,
 			All Teams))), Null, Null, Top, 50, White, White, White, Visible To and String, Default Visibility);
-	}
-}
-
-rule("[Debug] Acknowledge = slow motion")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Is Communicating(Event Player, Acknowledge) == True;
-		Event Player == Host Player;
-		Global.HostCheatsEnabled == True;
-	}
-
-	actions
-	{
-		Set Slow Motion(10);
-		Wait(3, Ignore Condition);
-		Set Slow Motion(100);
-	}
-}
-
-rule("[Debug] group up = speed boost")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Is Communicating(Event Player, Group Up) == True;
-		Event Player == Host Player;
-		Global.HostCheatsEnabled == True;
-	}
-
-	actions
-	{
-		Set Move Speed(Event Player, 300);
-		Wait(5, Ignore Condition);
-		Set Move Speed(Event Player, 100);
 	}
 }
 
@@ -1128,8 +1098,8 @@ rule("[Debug] Hello = Death")
 
 	actions
 	{
-		Teleport(Event Player, Vector(0, 3, 0));
-		Set Facing(Event Player, Vector(3, 0, 0), To World);
+		Set Max Health(Event Player, 300);
+		Event Player.IsStatsChanged = True;
 	}
 }
 
@@ -1178,30 +1148,6 @@ rule("[Debug] Need Healing = Damage Over Time")
 		Play Effect(Players Within Radius(Event Player, 0.200, All Teams, Surfaces), Debuff Impact Sound, White, Players Within Radius(
 			Event Player, 0.200, All Teams, Surfaces), 200);
 		Damage(Event Player, Null, Health(Event Player) - 1);
-	}
-}
-
-rule("[Debug] Ult voice line = Ult Charge")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Is Communicating(Event Player, Ultimate Status) == True;
-		Event Player == Host Player;
-		Global.HostCheatsEnabled == True;
-	}
-
-	actions
-	{
-		Set Ultimate Charge(All Players(All Teams), 100);
-		Play Effect(Players Within Radius(Event Player, 0.200, All Teams, Surfaces), Ring Explosion Sound, White, Players Within Radius(
-			Event Player, 0.200, All Teams, Surfaces), 200);
 	}
 }
 
@@ -1280,8 +1226,6 @@ rule("[SUB] SpawnStatsReset")
 			Set Move Speed(Event Player, 100);
 			Set Gravity(Event Player, 100);
 			Set Invisible(Event Player, None);
-			Event Player.DamageModAmmount = 0;
-			Stop Damage Modification(Event Player.DamageModID);
 		End;
 		Wait(0.016, Ignore Condition);
 		"Reset abilities (Cannot be detected by workshop code yet, so activate on every character)"
@@ -1725,12 +1669,8 @@ rule("Initialize EVERY Character")
 		"Pharah Custom Stats"
 		Else If(Hero Of(Event Player) == Hero(Pharah));
 			Event Player.IsStatsChanged = True;
-			Event Player.DamageModReciever = Event Player;
-			Event Player.DamageModAttacker = Event Player;
-			Event Player.DamageModAmmount = 25 / 40 * 100;
-			Start Damage Modification(Event Player.DamageModReciever, Event Player.DamageModAttacker, Event Player.DamageModAmmount,
-				Receivers Damagers and Damage Percent);
-			Event Player.DamageModID = Last Damage Modification ID;
+			Start Damage Modification(Event Player, Event Player, 25 / 40 * 100, None);
+			Event Player.HEROPharahSelfDamageModID = Last Damage Modification ID;
 		"Lucio Custom Stats"
 		Else If(Hero Of(Event Player) == Hero(Lúcio));
 			Set Healing Dealt(Event Player, 0);
@@ -1743,10 +1683,10 @@ rule("Initialize EVERY Character")
 		End;
 		Wait(0.016, Ignore Condition);
 		"Heal all players to max hp incase of odd max hp behavior"
-		While(Health(Event Player) != Max Health(Event Player));
-			Heal(Event Player, Null, 10000);
-			Wait(0.016, Ignore Condition);
-		End;
+		disabled While(Health(Event Player) != Max Health(Event Player));
+		disabled Heal(Event Player, Null, 10000);
+		disabled Wait(0.016, Ignore Condition);
+		disabled End;
 	}
 }
 
@@ -2511,46 +2451,6 @@ rule("[Pharah] Jump Jets Forward")
 	}
 }
 
-rule("[Pharah] Self-Damage On Ult")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Pharah;
-	}
-
-	conditions
-	{
-		Is Using Ultimate(Event Player) == True;
-	}
-
-	actions
-	{
-		Event Player.DamageModAmmount = 200;
-	}
-}
-
-rule("[Pharah] Self-Damage Reset")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Pharah;
-	}
-
-	conditions
-	{
-		Is Using Ultimate(Event Player) != True;
-	}
-
-	actions
-	{
-		Event Player.DamageModAmmount = 25 / 40 * 100;
-	}
-}
-
 rule("[Pharah] Rocket Jumps/Pogo-Jumping/C-Taps allow market garden")
 {
 	event
@@ -2882,5 +2782,171 @@ disabled rule("Rule 75")
 	event
 	{
 		Ongoing - Global;
+	}
+}
+
+rule("[Mei] Chilled Debuff Apply")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		Victim.HEROMeiChilledPassive == Null;
+	}
+
+	actions
+	{
+		Start Damage Modification(All Players(All Teams), Victim, 88, Receivers Damagers and Damage Percent);
+		Victim.HEROMeiChilledDebuff = Last Damage Modification ID;
+		Create Effect(All Players(All Teams), Sparkles, Blue, Victim, 0.650, Visible To Position and Radius);
+		Victim.HEROMeiChilledPassive = Last Created Entity;
+	}
+}
+
+rule("[Mei] Chilled Debuff Remove")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.HEROMeiChilledPassive != Null;
+	}
+
+	actions
+	{
+		Wait(4, Ignore Condition);
+		Stop Damage Modification(Event Player.HEROMeiChilledDebuff);
+		Destroy Effect(Event Player.HEROMeiChilledPassive);
+		Event Player.HEROMeiChilledDebuff = Null;
+		Event Player.HEROMeiChilledPassive = Null;
+	}
+}
+
+rule("[Mei] Detect IceWall Activation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.HEROMeiIceWall = 1;
+		Start Rule(HEROMeiIceWallStats, Restart Rule);
+	}
+}
+
+rule("[Mei] Detect Placement Deactivation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		Is Using Ability 2(Event Player) == False;
+	}
+
+	actions
+	{
+		Event Player.HEROMeiIceWall = 0;
+		Start Rule(HEROMeiIceWallStats, Restart Rule);
+	}
+}
+
+rule("[Mei] IceWall Duration")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		Event Player.HEROMeiIceWall == Absolute Value(1);
+		Is Button Held(Event Player, Primary Fire) == True;
+	}
+
+	actions
+	{
+		"Reset All"
+		Set Max Health(Event Player, 100);
+		"Divide effective HP vs actual max hp so Mei doesnt take more damage than usual"
+		Set Damage Received(Event Player, 100);
+		"Divide effective HP vs actual max hp so Mei doesnt take more healing than usual"
+		Set Healing Received(Event Player, 100);
+		Wait(4, Ignore Condition);
+		Press Button(Event Player, Ability 2);
+	}
+}
+
+rule("[Mei] IceBlock Duration")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Mei;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(3, Abort When False);
+		Press Button(Event Player, Primary Fire);
+	}
+}
+
+rule("[Mei] IceWallHealthChecks")
+{
+	event
+	{
+		Subroutine;
+		HEROMeiIceWallStats;
+	}
+
+	actions
+	{
+		If(Event Player.HEROMeiIceWall == True);
+			Event Player.IsStatsChanged = True;
+			"Make max hp of ice wall 250 from 560"
+			Set Max Health(Event Player, 250 / 560 * 100);
+			"Divide effective HP vs actual max hp so Mei doesnt take more damage than usual"
+			Set Damage Received(Event Player, 156 / 350 * 100);
+			"Divide effective HP vs actual max hp so Mei doesnt take more healing than usual"
+			Set Healing Received(Event Player, 156 / 350 * 100);
+		Else;
+			"Reset All"
+			Set Max Health(Event Player, 100);
+			"Divide effective HP vs actual max hp so Mei doesnt take more damage than usual"
+			Set Damage Received(Event Player, 100);
+			"Divide effective HP vs actual max hp so Mei doesnt take more healing than usual"
+			Set Healing Received(Event Player, 100);
 	}
 }

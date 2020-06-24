@@ -1,17 +1,14 @@
 variables
 {
 	player:
-		32: p1
-		33: p2
-		34: p3
+		9: DamageModAmmount
 }
 
 actions
 {
-	Event Player.p2[0] = Vector(X Component Of(Event Player.p2), Y Component Of(Event Player.p1), Z Component Of(Event Player.p2));
-	Event Player.p3[0] = Vector(X Component Of(Event Player.p3), Y Component Of(Event Player.p1), Z Component Of(Event Player.p3));
+	Event Player.DamageModAmmount = 25 / 40 * 100;
+	Start Damage Modification(Event Player, Event Player, 25 / 40 * 100, Receivers Damagers and Damage Percent);
 }
-
 -------------------------------------------------------------------------------------------------------------------------------------------
 
 subroutines
