@@ -7,12 +7,7 @@ settings
 
 	lobby
 	{
-		Map Rotation: After A Game
 		Match Voice Chat: Enabled
-		Max Spectators: 4
-		Return To Lobby: Never
-		Swap Teams After Match: No
-		Use Experimental Update If Available: Yes
 	}
 
 	modes
@@ -172,7 +167,7 @@ subroutines
 	5: HEROMeiIceWallStats
 }
 
-disabled rule("[Disable Inspector Recording]")
+rule("[Toggleable Options and More]")
 {
 	event
 	{
@@ -183,28 +178,16 @@ disabled rule("[Disable Inspector Recording]")
 	{
 		"Greatly reduces server lag"
 		Disable Inspector Recording;
-	}
-}
-
-rule("[Toggleable Debug Options and More]")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-
-	actions
-	{
 		"Enable Server Load HUD"
-		Global.ServerLoadText = True;
+		disabled Global.ServerLoadText = True;
 		"Enable Debug HUD"
 		disabled Global.DebugHUD = True;
 		"Enable Host Cheats"
-		Global.HostCheatsEnabled = True;
+		disabled Global.HostCheatsEnabled = True;
 		"Enable Ruler"
-		Global.RulerEnabled = True;
+		disabled Global.RulerEnabled = True;
 		"Enable Short Cooldowns"
-		Global.ShortCooldownsEnabled = True;
+		disabled Global.ShortCooldownsEnabled = True;
 	}
 }
 
@@ -1426,6 +1409,7 @@ rule("[SUB] InfoHUDHandler")
 		disabled Create HUD Text(Event Player, Null, Null, Custom String("Description"), Left, 2, White, White, White, Visible To and String,
 			Default Visibility);
 		disabled Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+		disabled Event Player.InfoHUDText[0] = 8;
 		Wait(0.016, Ignore Condition);
 		Create HUD Text(Event Player, Custom String("{0} : Info", Hero Icon String(Hero Of(Event Player))), Null, Null, Left, 0.100, White,
 			White, White, Visible To and String, Default Visibility);
@@ -1473,6 +1457,120 @@ rule("[SUB] InfoHUDHandler")
 				White, White, Red, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			Event Player.InfoHUDText[0] = 3;
+		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(Bastion));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Reconfigure", Ability Icon String(Hero(Bastion), Button(Ultimate))), Null, Null,
+				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("{0} has limited ammo that regenerates outside of {0} form",
+				Ability Icon String(Hero(Bastion), Button(Primary Fire))), Left, 2, White, White, White, Visible To and String,
+				Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Holding jump in {0} form moves you forward slowly", Ability Icon String(
+				Hero(Bastion), Button(Primary Fire))), Left, 3, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("You can only {0} if at 100% ammo", Ability Icon String(Hero(Bastion),
+				Button(Ability 1))), Left, 4, White, White, Red, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Null Wrecker", Ability Icon String(Hero(Bastion), Button(Ultimate))), Null,
+				Null, Left, 5, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Bastion's shots are super powerful"), Left, 6, White, White, White,
+				Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("You can no longer move in this form, and it is much shorter"), Left, 7,
+				White, White, Red, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 7;
+		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(McCree));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Peacekeeper", Ability Icon String(Hero(McCree), Button(Primary Fire))), Null,
+				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Primary and Secondary fire are cooldown-based"), Left, 2, White, White,
+				Red, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0}: Draw ", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null, Left, 3,
+				Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Using any ability resets your {0} cooldown", Ability Icon String(Hero(
+				McCree), Button(Primary Fire))), Left, 4, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Headshots and kills severely lower your {0} cooldown",
+				Ability Icon String(Hero(McCree), Button(Primary Fire))), Left, 5, White, White, White, Visible To and String,
+				Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Deadeye", Ability Icon String(Hero(McCree), Button(Ultimate))), Null, Null,
+				Left, 6, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("No longer slows you down"), Left, 7, White, White, White,
+				Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 7;
+		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(Lúcio));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Damage Boost Song", Ability Icon String(Hero(Lúcio), Button(Ability 1))), Null,
+				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Heal song has been replaced with Damage Boost song"), Left, 2, White,
+				White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Subwoofer Blowout", Ability Icon String(Hero(Lúcio), Button(Ultimate))), Null,
+				Null, Left, 3, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Landing knocks all enemies within your song radius upwards"), Left, 4,
+				White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 4;
+		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(Hanzo));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Shock Arrow", Ability Icon String(Hero(Hanzo), Button(Ability 2))), Null, Null,
+				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Storm arrows cause small explosions upon impact"), Left, 2, White, White,
+				White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 2;
+		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(Mei));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Chilled", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null, Left, 1,
+				Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Enemies damaged by Mei deal less damage for a short time"), Left, 2,
+				White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Cryo-Freeze", Ability Icon String(Hero(Mei), Button(Ability 1))), Null, Null,
+				Left, 3, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Heals more, but is shorter in duration"), Left, 4, White, White, White,
+				Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Ice Wall", Ability Icon String(Hero(Mei), Button(Ability 2))), Null, Null, Left,
+				5, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Cooldown is lowered significantly"), Left, 6, White, White, White,
+				Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Health of each pillar is lowered significantly"), Left, 7, White, White,
+				Red, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String(
+				"Note: There is a visual bug with Mei's HP while placing {0}. Actual damage taken is not changed.", Ability Icon String(Hero(
+				Mei), Button(Ability 2))), Left, 8, White, White, Orange, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 8;
+		"ENDING"
 		Else;
 			"Missing Info"
 			Create HUD Text(Event Player, Custom String("{0} Info Missing {0}", Icon String(X)), Null, Null, Left, 1, Red, White, White,

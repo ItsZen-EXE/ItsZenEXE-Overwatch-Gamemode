@@ -1,0 +1,947 @@
+variables
+{
+	global:
+		0: DebugEnabled
+		1: DmgTestBotSpawnerPos
+		2: HostCheatsEnabled
+		3: StatusTestBotSpawnerPos
+		4: ShortCooldownsEnabled
+		5: RulerEnabled
+		6: DebugHUD
+		7: ServerLoadText
+
+	player:
+		7: IsStatsChanged
+		9: FastCooldownsToggle
+		30: RulerPointer
+		31: RulerMode
+		32: RulerState
+		33: RulerPos1
+		34: RulerPos2
+		35: RulerPos3
+		36: RulerAngle
+}
+
+rule("========================[] Debug")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+}
+
+rule("[Enable Debug On Workshop Maps & Check for if Debug needs Disabled due to number of players]")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		"Workshop Maps Required for Debug (Chamber, Expanse, or Island) "
+		(Current Map == Map(Workshop Chamber) || Current Map == Map(Workshop Expanse) || Current Map == Map(Workshop Island)
+			|| Current Map == Map(Workshop Expanse Night) || Current Map == Map(Workshop Island Night)) == True;
+	}
+
+	actions
+	{
+		If(Has Spawned(Host Player) == False);
+			Wait(1, Ignore Condition);
+			Loop;
+		Else;
+		End;
+		"Host Player ONLY Check (Excludes dummy bots)"
+		If(Remove From Array(Filtered Array(All Players(All Teams), !Is Dummy Bot(Current Array Element)), Host Player) == Empty Array);
+			Global.DebugEnabled = True;
+			Big Message(Host Player, Custom String("Debug Enabled"));
+		Else;
+			Big Message(Host Player, Custom String("{0} Debug Auto-Disabled {0}", Icon String(Warning)));
+	}
+}
+
+rule("[Ruler] HUD text")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.RulerEnabled == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Null, Custom String(
+			"Interact = Enable/Disable Ruler Mode"), Left, -1, White, White, White, Visible To and String, Default Visibility);
+		"p1"
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.RulerPos1, Custom String(
+			"Primary Fire"), Custom String("p1"), Left, 1, Orange, Orange, Orange, Visible To and String, Default Visibility);
+		"p2"
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.RulerPos2, Custom String(
+			"Primary fire"), Custom String("p2"), Left, 2, Aqua, Aqua, Aqua, Visible To and String, Default Visibility);
+		"p3"
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.RulerPos3, Custom String(
+			"Secondary Fire"), Custom String("p3"), Left, 3, Green, Green, Green, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String("Reload = p3 == p1 UP"), Null,
+			Left, 4, Green, Green, Green, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String(
+			"Reload + Crouch = p3 == p1 DOWN"), Null, Left, 5, Green, Green, Green, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String(
+			"Melee = p3 on opposite wall of p1 & p2"), Null, Left, 6, Green, Green, Green, Visible To and String, Default Visibility);
+		"Dist"
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Distance Between(Event Player.RulerPos1,
+			Event Player.RulerPos2), Custom String("distance from"), Custom String("p1 to p2"), Top, 1, White, White, White,
+			Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Distance Between(Event Player.RulerPos1,
+			Event Player.RulerPos3), Custom String("distance from"), Custom String("p1 to p3"), Top, 2, White, White, White,
+			Visible To and String, Default Visibility);
+		"angle"
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Event Player.RulerAngle, Null, Custom String(
+			"Angle"), Right, 0, Orange, White, Orange, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String("Ability 1 = horizontal angle"),
+			Null, Right, 1, Orange, Orange, Orange, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String("Ability 2 = vertical angle"),
+			Null, Right, 2, Orange, Orange, Orange, Visible To and String, Default Visibility);
+		Create HUD Text(Filtered Array(Event Player, Event Player.RulerMode == True), Null, Custom String("Ult = Set p2Y & p3Y == p1Y "),
+			Null, Right, 3, White, White, White, Visible To and String, Default Visibility);
+	}
+}
+
+rule("[Ruler] Enable Ruler Mode")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Event Player.RulerMode == 0;
+		Global.RulerEnabled == True;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.RulerMode = 1;
+		Disallow Button(Event Player, Primary Fire);
+		Disallow Button(Event Player, Secondary Fire);
+		Disallow Button(Event Player, Ability 1);
+		Disallow Button(Event Player, Ability 2);
+		Disallow Button(Event Player, Ultimate);
+		Disallow Button(Event Player, Melee);
+	}
+}
+
+rule("[Ruler] Disable Ruler Mode")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Event Player.RulerMode == 1;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.RulerMode = 0;
+		Allow Button(Event Player, Primary Fire);
+		Allow Button(Event Player, Secondary Fire);
+		Allow Button(Event Player, Ability 1);
+		Allow Button(Event Player, Ability 2);
+		Allow Button(Event Player, Ultimate);
+		Allow Button(Event Player, Melee);
+	}
+}
+
+rule("[Ruler] Turn Ruler On")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Primary Fire) == True;
+		Event Player.RulerState == 0;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.RulerState = 1;
+		Create Beam Effect(Filtered Array(Event Player, Event Player.RulerMode == True), Grapple Beam, Eye Position(Event Player) + Vector(
+			Sine From Degrees(-90 + Horizontal Facing Angle Of(Event Player)), 0.500, Cosine From Degrees(-90 + Horizontal Facing Angle Of(
+			Event Player))), Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(All Teams), Event Player, True), White, Visible To Position and Radius);
+		Event Player.RulerPointer[0] = Last Created Entity;
+		Create Effect(Filtered Array(All Players(All Teams), Event Player.RulerMode == True), Sphere, White, Ray Cast Hit Position(
+			Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(Event Player) * 1000, All Players(All Teams),
+			Event Player, True), 0.200, Visible To Position and Radius);
+		Event Player.RulerPointer[1] = Last Created Entity;
+	}
+}
+
+rule("[Ruler] Place p1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Primary Fire) == True;
+		Event Player.RulerState == 1;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.RulerPos1[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(All Teams), Event Player, True);
+		Event Player.RulerState = 2;
+		Create Effect(Event Player, Orb, Orange, Event Player.RulerPos1, 1, Visible To Position and Radius);
+		Event Player.RulerPos1[2] = Last Created Entity;
+	}
+}
+
+rule("[Ruler] Place p2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Primary Fire) == True;
+		Event Player.RulerState == 2;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.RulerPos2[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(All Teams), Event Player, True);
+		Event Player.RulerState = 3;
+		Create Effect(Event Player, Orb, Aqua, Event Player.RulerPos2, 1, Visible To Position and Radius);
+		Event Player.RulerPos2[1] = Last Created Entity;
+		Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos2, Aqua,
+			Visible To Position and Radius);
+		Event Player.RulerPos2[2] = Last Created Entity;
+	}
+}
+
+rule("[Ruler] Destroy Ruler")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Primary Fire) == True;
+		Event Player.RulerState == 3;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Destroy Effect(Event Player.RulerPos1[2]);
+		Destroy Effect(Event Player.RulerPos2[1]);
+		Destroy Effect(Event Player.RulerPos2[2]);
+		Destroy Effect(Event Player.RulerPos3[1]);
+		Destroy Effect(Event Player.RulerPos3[2]);
+		Destroy Effect(Event Player.RulerPointer[0]);
+		Destroy Effect(Event Player.RulerPointer[1]);
+		Wait(0.016, Ignore Condition);
+		Event Player.RulerState = 0;
+		Event Player.RulerPos1 = Null;
+		Event Player.RulerPos2 = Null;
+		Event Player.RulerPos3 = Null;
+		Event Player.RulerAngle = 0;
+	}
+}
+
+rule("[Ruler] Set Y of p2 & p3 to Y of P1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Ultimate) == True;
+		Event Player.RulerState == 3;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.RulerPos2[0] = Vector(X Component Of(Event Player.RulerPos2), Y Component Of(Event Player.RulerPos1), Z Component Of(
+			Event Player.RulerPos2));
+		Event Player.RulerPos3[0] = Vector(X Component Of(Event Player.RulerPos3), Y Component Of(Event Player.RulerPos1), Z Component Of(
+			Event Player.RulerPos3));
+	}
+}
+
+rule("[Ruler] Place p3")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Secondary Fire) == True;
+		Event Player.RulerState == 3;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Skip If(Event Player.RulerPos3 != Null, 4);
+		Create Effect(Event Player, Orb, Green, Event Player.RulerPos3, 1, Visible To Position and Radius);
+		Event Player.RulerPos3[1] = Last Created Entity;
+		Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos3, Green,
+			Visible To Position and Radius);
+		Event Player.RulerPos3[2] = Last Created Entity;
+		Event Player.RulerPos3[0] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player) + Facing Direction Of(
+			Event Player) * 1000, All Players(All Teams), Event Player, True);
+	}
+}
+
+rule("[Ruler] Measure Angles Between p1 & p2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Ability 1) == True;
+		Event Player.RulerState == 3;
+		Event Player.RulerPos3 != 0;
+	}
+
+	actions
+	{
+		Event Player.RulerAngle = Vertical Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos2))
+			- Vertical Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos3));
+	}
+}
+
+rule("[Ruler] Measure Angles (part 2)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerAngle < -0.001;
+	}
+
+	actions
+	{
+		Event Player.RulerAngle = Event Player.RulerAngle * -1;
+	}
+}
+
+rule("[Ruler] Measure Angles Between p1 & p3")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Ability 2) == True;
+		Event Player.RulerState == 3;
+		Event Player.RulerPos3 != 0;
+	}
+
+	actions
+	{
+		Event Player.RulerAngle = Horizontal Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos2))
+			- Horizontal Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos3));
+	}
+}
+
+rule("[Ruler] Place p3 on opposite wall of p1 and p2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Melee) == True;
+		Event Player.RulerState == 3;
+		Event Player.RulerPos3 != Null;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.RulerPos3[0] = Ray Cast Hit Position(Event Player.RulerPos1, Event Player.RulerPos1 + Direction From Angles(
+			-90 + Horizontal Angle From Direction(Direction Towards(Event Player.RulerPos1, Event Player.RulerPos2)), 0) * 1000,
+			All Players(All Teams), Event Player, True);
+		disabled Create Effect(Event Player, Orb, Green, Event Player.RulerPos3, 1, Visible To Position and Radius);
+		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos3, Green,
+			Visible To Position and Radius);
+	}
+}
+
+rule("[Ruler] Place p3 on floor below p1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Reload) == True;
+		Event Player.RulerState == 3;
+		Is Crouching(Event Player) == True;
+		Event Player.RulerPos3 != Null;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		disabled Create Effect(Event Player, Orb, Green, Event Player.RulerPos3, 1, Visible To Position and Radius);
+		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos3, Green,
+			Visible To Position and Radius);
+		Event Player.RulerPos3[0] = Ray Cast Hit Position(Event Player.RulerPos1, Event Player.RulerPos1 + Direction From Angles(0, 90)
+			* 1000, All Players(All Teams), Event Player, True);
+	}
+}
+
+rule("[Ruler] Place p3 on ceiling above p1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Player.RulerMode == 1;
+		Is Button Held(Event Player, Reload) == True;
+		Event Player.RulerState == 3;
+		Is Crouching(Event Player) == False;
+		Event Player.RulerPos3 != Null;
+	}
+
+	actions
+	{
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		disabled Create Effect(Event Player, Orb, Green, Event Player.RulerPos3, 1, Visible To Position and Radius);
+		disabled Create Beam Effect(All Players(All Teams), Good Beam, Event Player.RulerPos1, Event Player.RulerPos3, Green,
+			Visible To Position and Radius);
+		Event Player.RulerPos3[0] = Ray Cast Hit Position(Event Player.RulerPos1, Event Player.RulerPos1 + Direction From Angles(0, -90)
+			* 1000, All Players(All Teams), Event Player, True);
+	}
+}
+
+rule("[ShortCooldowns] Enable/Disable using ult charge saying")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Ultimate Status) == True;
+		Global.ShortCooldownsEnabled == True;
+	}
+
+	actions
+	{
+		If(Is In Spawn Room(Event Player));
+			Small Message(Event Player, Custom String("Unable to enable short cooldowns (In Spawn)"));
+		Else;
+			If(Event Player.FastCooldownsToggle == False);
+				Small Message(Event Player, Custom String("Short-Cooldowns Enabled (wait 4s to disable)"));
+				Event Player.FastCooldownsToggle = True;
+			Else;
+				Event Player.FastCooldownsToggle = False;
+				Small Message(Event Player, Custom String("Short-Cooldowns Disabled (wait 4s to enable)"));
+	}
+}
+
+rule("[ShortCooldowns] secondary fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Secondary Fire)) > 1.500;
+		Event Player.FastCooldownsToggle == True;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Secondary Fire), 1);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[ShortCooldowns] ability 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Ability 1)) > 1.500;
+		Event Player.FastCooldownsToggle == True;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Ability 1), 1);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[ShortCooldowns] ability 2")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Ability 2)) > 1.500;
+		Event Player.FastCooldownsToggle == True;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Ability 2), 1);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[ShortCooldowns] ult")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ultimate Charge Percent(Event Player) != 100;
+		Event Player.FastCooldownsToggle == True;
+	}
+
+	actions
+	{
+		Abort If Condition Is False;
+		While(Is Using Ultimate(Event Player) == True);
+			Wait(0.250, Ignore Condition);
+		Else;
+		End;
+		Wait(1, Ignore Condition);
+		Abort If Condition Is False;
+		Set Ultimate Charge(Event Player, 100);
+	}
+}
+
+rule("[ShortCooldowns] crouch")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Crouch)) > 1.500;
+		Event Player.FastCooldownsToggle == True;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Crouch), 1);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[ShortCooldowns] Jump")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Jump)) > 1.500;
+		Event Player.FastCooldownsToggle == True;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Jump), 1);
+		Wait(0.016, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[Debug] HUD Per Player")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.DebugHUD == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Event Player, Null, Custom String("Primary: {0}", Is Firing Primary(Event Player)), Null, Top, 10, White, White,
+			White, Visible To and String, Default Visibility);
+		Create HUD Text(Event Player, Null, Custom String("Secondary: {0}", Is Firing Secondary(Event Player)), Null, Top, 10, White,
+			White, White, Visible To and String, Default Visibility);
+		Create HUD Text(Event Player, Null, Custom String("1: {0}", Is Using Ability 1(Event Player)), Null, Top, 10, White, White, White,
+			Visible To and String, Default Visibility);
+		Create HUD Text(Event Player, Null, Custom String("2: {0}", Is Using Ability 2(Event Player)), Null, Top, 10, White, White, White,
+			Visible To and String, Default Visibility);
+		Create HUD Text(Event Player, Null, Custom String("ult: {0}", Is Using Ultimate(Event Player)), Null, Top, 10, White, White, White,
+			Visible To and String, Default Visibility);
+		Create HUD Text(Event Player, Null, Custom String("Melee: {0}", Is Meleeing(Event Player)), Null, Top, 10, White, White, White,
+			Visible To and String, Default Visibility);
+		Create HUD Text(Event Player, Null, Custom String("Reload: {0}", Is Button Held(Event Player, Reload)), Null, Top, 10, White,
+			White, White, Visible To and String, Default Visibility);
+		Create HUD Text(Host Player, Custom String("altitude: {0}", Altitude Of(Event Player)), Null, Null, Top, -10, White, White, White,
+			Visible To and String, Default Visibility);
+	}
+}
+
+rule("[Debug] HUD")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global.ServerLoadText == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Host Player, Custom String("Peak: {0}", Server Load Peak), Custom String("Average: {0}", Server Load Average),
+			Custom String("Current: {0}", Server Load), Top, -30, White, White, White, Visible To and String, Default Visibility);
+	}
+}
+
+rule("[Debug] Alert if Debug enabled with multiple players")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global.DebugEnabled == True;
+		"Is host player the ONLY player? (If dummy bot, remove from check)"
+		Remove From Array(Filtered Array(All Players(All Teams), !Is Dummy Bot(Current Array Element)), Host Player) != Empty Array;
+	}
+
+	actions
+	{
+		Big Message(Host Player, Custom String("{0} Please restart to disable debug mode {0}", Icon String(Warning)));
+		Play Effect(Host Player, Debuff Impact Sound, White, Host Player, 200);
+		Wait(5, Ignore Condition);
+		Loop If Condition Is True;
+	}
+}
+
+rule("[Debug] Knockback/Damage bots position (B)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global.DebugEnabled == True;
+	}
+
+	actions
+	{
+		Global.DmgTestBotSpawnerPos[0] = Vector(-15.957, 0, -15.981);
+		Create Effect(All Players(All Teams), Sphere, Blue, Global.DmgTestBotSpawnerPos[0], 1, Visible To Position and Radius);
+		Create In-World Text(All Players(All Teams), Custom String("Spawn Damage Testing Heroes {0} {1}", Hero Icon String(Hero(McCree)),
+			Hero Icon String(Hero(Roadhog))), Global.DmgTestBotSpawnerPos[0] + Up, 1, Clip Against Surfaces,
+			Visible To Position and String, Red, Visible Always);
+	}
+}
+
+rule("[Debug] Spawn Damage Bots")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.DebugEnabled == True;
+		Is True For Any(Global.DmgTestBotSpawnerPos, Distance Between(Event Player, Current Array Element) <= 1.200) == True;
+		Event Player == Host Player;
+		Is Button Held(Host Player, Interact) == True;
+	}
+
+	actions
+	{
+		Stop Facing(All Players(All Teams));
+		Play Effect(All Players(All Teams), Buff Explosion Sound, White, Event Player, 100);
+		Destroy All Dummy Bots;
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(McCree), All Teams, 1, Vector(-17.568, 2, -11.259), Null);
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(Roadhog), All Teams, 2, Vector(-11.766, 2, -18.699), Null);
+		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Host Player + Vector(0,
+			0.400, 0)), 100, To World, Direction and Turn Rate);
+		Start Facing(Players In Slot(2, All Teams), Direction Towards(Eye Position(Players In Slot(2, All Teams)), Host Player + Vector(0,
+			0.400, 0)), 100, To World, Direction and Turn Rate);
+		Wait(0.250, Ignore Condition);
+	}
+}
+
+rule("[Debug] Spawn Status/Ability Test Position (D)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Global.DebugEnabled == True;
+	}
+
+	actions
+	{
+		Global.StatusTestBotSpawnerPos[0] = Vector(0, 0, 0);
+		Create Effect(All Players(All Teams), Ring, Sky Blue, Global.StatusTestBotSpawnerPos[0], 1, Visible To Position and Radius);
+		Create In-World Text(All Players(All Teams), Custom String("Spawn Testing Bot"), Global.StatusTestBotSpawnerPos[0] + Up, 1,
+			Clip Against Surfaces, Visible To Position and String, Red, Visible Always);
+	}
+}
+
+rule("[Debug] Spawn Status/Ability Test Bot")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Global.DebugEnabled == True;
+		Is True For Any(Global.StatusTestBotSpawnerPos, Distance Between(Event Player, Current Array Element) <= 1.200) == True;
+		Event Player == Host Player;
+		Is Button Held(Host Player, Interact) == True;
+	}
+
+	actions
+	{
+		Stop Facing(All Players(All Teams));
+		Play Effect(All Players(All Teams), Buff Explosion Sound, White, Event Player, 100);
+		Destroy All Dummy Bots;
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(Mei), All Teams, 1, Vector(17.043, 1.424, -0.038), Direction Towards(Eye Position(Players In Slot(1,
+			All Teams)), Vector(-95.785, 33.918, 73.376)));
+		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Eye Position(
+			Host Player)), 100, To World, Direction and Turn Rate);
+		Wait(2, Ignore Condition);
+		Start Holding Button(Players In Slot(1, All Teams), Primary Fire);
+		Create HUD Text(Host Player, Custom String("{0} / {1} HP", Health(Players In Slot(1, All Teams)), Max Health(Players In Slot(1,
+			All Teams))), Null, Null, Top, 50, White, White, White, Visible To and String, Default Visibility);
+	}
+}
+
+rule("[Debug] Hello = Death")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Hello) == True;
+		Event Player == Host Player;
+		Global.HostCheatsEnabled == True;
+	}
+
+	actions
+	{
+		Set Max Health(Event Player, 300);
+		Event Player.IsStatsChanged = True;
+	}
+}
+
+rule("[Debug] Thanks = Healing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Thanks) == True;
+		Event Player == Host Player;
+		Global.HostCheatsEnabled == True;
+	}
+
+	actions
+	{
+		Start Heal Over Time(Event Player, Event Player, 5, 20);
+		Play Effect(Players Within Radius(Event Player, 0.200, All Teams, Surfaces), Buff Explosion Sound, White, Players Within Radius(
+			Event Player, 0.200, All Teams, Surfaces), 200);
+	}
+}
+
+rule("[Debug] Need Healing = Damage Over Time")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Communicating(Event Player, Need Healing) == True;
+		Event Player == Host Player;
+		Global.HostCheatsEnabled == True;
+	}
+
+	actions
+	{
+		Play Effect(Players Within Radius(Event Player, 0.200, All Teams, Surfaces), Debuff Impact Sound, White, Players Within Radius(
+			Event Player, 0.200, All Teams, Surfaces), 200);
+		Damage(Event Player, Null, Health(Event Player) - 1);
+	}
+}
