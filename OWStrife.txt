@@ -209,7 +209,7 @@ rule("Fast Setup Time")
 	actions
 	{
 		Kill(All Players(All Teams), Null);
-		Set Match Time(6);
+		Set Match Time(18);
 	}
 }
 
