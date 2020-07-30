@@ -55,13 +55,30 @@ settings
 				Ultimate Generation - Combat B.O.B.: 175%
 			}
 
+			Baptiste
+			{
+				Damage Dealt: 80%
+			}
+
 			Bastion
 			{
 				Ammunition Clip Size Scalar: 71%
 				Configuration: Tank Weapon Knockback Scalar: 150%
 				Damage Dealt: 75%
+				Self-Repair Recharge Rate: 0%
 				Ultimate Duration: 50%
 				Ultimate Generation Configuration: Tank: 70%
+			}
+
+			Brigitte
+			{
+				Barrier Shield Cooldown Time: 120%
+				Barrier Shield Recharge Rate: 118%
+				Health: 80%
+				Repair Pack Cooldown Time: 150%
+				Shield Bash Knockback Scalar: 120%
+				Whip Shot Cooldown Time: 125%
+				Whip Shot Knockback Scalar: 117%
 			}
 
 			Hanzo
@@ -80,8 +97,6 @@ settings
 			McCree
 			{
 				Combat Roll Cooldown Time: 80%
-				Damage Dealt: 115%
-				No Ammunition Requirement: On
 			}
 
 			Mei
@@ -89,34 +104,44 @@ settings
 				Cryo-Freeze Cooldown Time: 91%
 				Damage Dealt: 86%
 				Healing Dealt: 170%
-				Health: 140%
+				Health: 62%
 				Ice Wall Cooldown Time: 77%
 			}
 
 			Pharah
 			{
-				Ammunition Clip Size Scalar: 67%
-				Concussive Blast Knockback Scalar: 150%
-				Hover Jets: Off
-				Jump Jet Acceleration Scalar: 37%
-				Jump Jet Cooldown Time: 80%
-				Movement Gravity: 95%
-				Projectile Speed: 110%
-				Rocket Launcher Knockback Scalar: 140%
+				Hover Jets Maximum Time: 95%
+				Jump Jet Cooldown Time: 87%
+			}
+
+			Zarya
+			{
+				Healing Received: 125%
+				Particle Barrier Cooldown Time: 80%
+				Projected Barrier Cooldown Time: 200%
 			}
 
 			enabled heroes
 			{
 				Ana
 				Ashe
+				Baptiste
 				Bastion
-				Hanzo
+				Brigitte
 				Lúcio
 				McCree
 				Mei
 				Pharah
+				Zarya
 			}
 		}
+	}
+
+	workshop
+	{
+		Enable Ruler: On
+		Enable Server Load Text: On
+		Enable Short Cooldowns: On
 	}
 }
 
@@ -127,16 +152,12 @@ variables
 		1: DmgTestBotSpawnerPos
 		2: HostCheatsEnabled
 		3: StatusTestBotSpawnerPos
-		4: ShortCooldownsEnabled
 		5: RulerEnabled
-		6: DebugHUD
-		7: ServerLoadText
 		8: antiCrashActive
 
 	player:
 		0: HudText
 		1: IsUsingAbility
-		2: AbilityCooldowns
 		3: AbilityVariables
 		4: AbilityEffects
 		5: AbilityVariableChase_I
@@ -144,10 +165,6 @@ variables
 		7: IsStatsChanged
 		8: InfoHUDText
 		9: FastCooldownsToggle
-		10: HEROPharahSelfDamageModID
-		11: HEROMeiChilledDebuff
-		12: HEROMeiChilledPassive
-		13: HEROMeiIceWall
 		30: RulerPointer
 		31: RulerMode
 		32: RulerState
@@ -164,10 +181,9 @@ subroutines
 	2: HUDHandler
 	3: InfoHUDDespawner
 	4: InfoHUDHandler
-	5: HEROMeiIceWallStats
 }
 
-rule("[Toggleable Options and More]")
+rule("[Toggleable Options and More] (most require debug scripts added)")
 {
 	event
 	{
@@ -178,16 +194,18 @@ rule("[Toggleable Options and More]")
 	{
 		"Greatly reduces server lag"
 		Disable Inspector Recording;
-		"Enable Server Load HUD"
-		disabled Global.ServerLoadText = True;
-		"Enable Debug HUD"
-		disabled Global.DebugHUD = True;
 		"Enable Host Cheats"
-		disabled Global.HostCheatsEnabled = True;
+		Global.HostCheatsEnabled = Workshop Setting Toggle(Custom String("DEBUG OPTIONS"), Custom String("Enable Host Cheats"), False);
 		"Enable Ruler"
-		disabled Global.RulerEnabled = True;
-		"Enable Short Cooldowns"
-		disabled Global.ShortCooldownsEnabled = True;
+		Global.RulerEnabled = Workshop Setting Toggle(Custom String("DEBUG OPTIONS"), Custom String("Enable Ruler"), False);
+	}
+}
+
+rule("========================[] Debug")
+{
+	event
+	{
+		Ongoing - Global;
 	}
 }
 
@@ -218,33 +236,6 @@ rule("[Enable Debug On Workshop Maps & Check for if Debug needs Disabled due to 
 			Big Message(Host Player, Custom String("Debug Enabled"));
 		Else;
 			Big Message(Host Player, Custom String("{0} Debug Auto-Disabled {0}", Icon String(Warning)));
-	}
-}
-
-rule("[Enable Fast Setup Time]")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-
-	conditions
-	{
-		Is Assembling Heroes == True;
-	}
-
-	actions
-	{
-		Kill(All Players(All Teams), Null);
-		Set Match Time(6);
-	}
-}
-
-rule("========================[] Debug")
-{
-	event
-	{
-		Ongoing - Global;
 	}
 }
 
@@ -715,7 +706,7 @@ rule("[ShortCooldowns] Enable/Disable using ult charge saying")
 	conditions
 	{
 		Is Communicating(Event Player, Ultimate Status) == True;
-		Global.ShortCooldownsEnabled == True;
+		Workshop Setting Toggle(Custom String("DEBUG OPTIONS"), Custom String("Enable Short Cooldowns"), False) == True;
 	}
 
 	actions
@@ -886,7 +877,7 @@ rule("[Debug] HUD Per Player")
 
 	conditions
 	{
-		Global.DebugHUD == True;
+		Workshop Setting Toggle(Custom String("DEBUG OPTIONS"), Custom String("Enable Debug HUD"), False) == True;
 	}
 
 	actions
@@ -919,7 +910,7 @@ rule("[Debug] HUD")
 
 	conditions
 	{
-		Global.ServerLoadText == True;
+		Workshop Setting Toggle(Custom String("DEBUG OPTIONS"), Custom String("Enable Server Load Text"), False) == True;
 	}
 
 	actions
@@ -1052,7 +1043,7 @@ rule("[Debug] Spawn Status/Ability Test Bot")
 		Play Effect(All Players(All Teams), Buff Explosion Sound, White, Event Player, 100);
 		Destroy All Dummy Bots;
 		Wait(0.250, Ignore Condition);
-		Create Dummy Bot(Hero(Mei), All Teams, 1, Vector(17.043, 1.424, -0.038), Direction Towards(Eye Position(Players In Slot(1,
+		Create Dummy Bot(Hero(Junkrat), All Teams, 1, Vector(17.043, 1.424, -0.038), Direction Towards(Eye Position(Players In Slot(1,
 			All Teams)), Vector(-95.785, 33.918, 73.376)));
 		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Eye Position(
 			Host Player)), 100, To World, Direction and Turn Rate);
@@ -1134,13 +1125,32 @@ rule("[Debug] Need Healing = Damage Over Time")
 	}
 }
 
-rule("========================[] Actual Gamemode")
+rule("========================[] Gamemode")
 {
 	event
 	{
 		Ongoing - Each Player;
 		All;
 		All;
+	}
+}
+
+rule("Fast Setup Time")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		Is Assembling Heroes == True;
+	}
+
+	actions
+	{
+		Kill(All Players(All Teams), Null);
+		Set Match Time(2);
 	}
 }
 
@@ -1198,6 +1208,21 @@ rule("[SUB] SpawnStatsReset")
 
 	actions
 	{
+		Remove All Health Pools From Player(Event Player);
+		Start Scaling Player(Event Player, 1, False);
+		Stop Scaling Player(Event Player);
+		"Reset abilities (Cannot be detected by workshop code yet, so activate on every character)"
+		Set Primary Fire Enabled(Event Player, True);
+		Set Reload Enabled(Event Player, True);
+		Set Secondary Fire Enabled(Event Player, True);
+		Set Ability 1 Enabled(Event Player, True);
+		Set Ability 2 Enabled(Event Player, True);
+		Set Ultimate Ability Enabled(Event Player, True);
+		Allow Button(Event Player, Primary Fire);
+		Allow Button(Event Player, Secondary Fire);
+		Allow Button(Event Player, Ability 1);
+		Allow Button(Event Player, Ability 2);
+		Allow Button(Event Player, Ultimate);
 		"If a stats change is in effect on the current player, then reset stats"
 		If(Event Player.IsStatsChanged == True);
 			Set Max Health(Event Player, 100);
@@ -1210,26 +1235,6 @@ rule("[SUB] SpawnStatsReset")
 			Set Gravity(Event Player, 100);
 			Set Invisible(Event Player, None);
 		End;
-		Wait(0.016, Ignore Condition);
-		"Reset abilities (Cannot be detected by workshop code yet, so activate on every character)"
-		Set Primary Fire Enabled(Event Player, True);
-		Set Secondary Fire Enabled(Event Player, True);
-		Set Ability 1 Enabled(Event Player, True);
-		Set Ability 2 Enabled(Event Player, True);
-		Set Ultimate Ability Enabled(Event Player, True);
-		Wait(0.016, Ignore Condition);
-		Allow Button(Event Player, Primary Fire);
-		Allow Button(Event Player, Secondary Fire);
-		Allow Button(Event Player, Ability 1);
-		Allow Button(Event Player, Ability 2);
-		Allow Button(Event Player, Ultimate);
-		"If ANY Ability Cooldowns are not 0"
-		If(Is True For Any(Event Player.AbilityCooldowns, Current Array Element != 0));
-			Event Player.AbilityCooldowns[1] = 0;
-			Event Player.AbilityCooldowns[2] = 0;
-			Event Player.AbilityCooldowns[3] = 0;
-		End;
-		Wait(0.016, Ignore Condition);
 		"If ANY custom abilities are in-use"
 		If(Is True For Any(Event Player.IsUsingAbility, Current Array Element != False));
 			Event Player.IsUsingAbility[1] = False;
@@ -1275,6 +1280,8 @@ rule("[SUB] SpawnStatsReset")
 		If(Has Status(Event Player, Stunned) == True);
 			Clear Status(Event Player, Stunned);
 		End;
+		"wait"
+		Wait(0.016, Ignore Condition);
 	}
 }
 
@@ -1309,6 +1316,33 @@ rule("[SUB] EffectHandler")
 				Event Player))), 12, Visible To Position and Radius);
 			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
 			Event Player.AbilityEffects[0] += 3;
+		"Baptiste Custom Effects"
+		Else If(Hero Of(Event Player) == Hero(Baptiste));
+			Create Effect(Filtered Array(Players Within Radius(Event Player, 5, All Teams, Surfaces), Event Player.IsUsingAbility[1] == True),
+				Light Shaft, Yellow, Event Player, 1, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Create Effect(Filtered Array(Players Within Radius(Event Player, 5, All Teams, Surfaces), Event Player.IsUsingAbility[1] == True),
+				Beacon Sound, Yellow, Event Player, 200, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Event Player.AbilityEffects[0] += 2;
+		"Baptiste Custom Effects"
+		Else If(Hero Of(Event Player) == Hero(Brigitte));
+			Create Effect(Filtered Array(Players Within Radius(Event Player, 5, All Teams, Surfaces), Event Player.IsUsingAbility[1] == True),
+				Ring, Yellow, Event Player, 1, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Create Effect(Filtered Array(Event Player, Event Player.IsUsingAbility[1] == True), Beacon Sound, Yellow, Event Player, 150,
+				Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Event Player.AbilityEffects[0] += 2;
+		"Baptiste Custom Effects"
+		Else If(Hero Of(Event Player) == Hero(Zarya));
+			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[1] == True), Bad Aura, Purple, Position Of(
+				Event Player) + Vector(0, 1.300, 0), 0.333, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Create Effect(Filtered Array(Players Within Radius(Event Player, 20, All Teams, Surfaces), Event Player.IsUsingAbility[1] == True),
+				Energy Sound, Purple, Event Player, 80, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Event Player.AbilityEffects[0] += 2;
 		Else;
 		End;
 	}
@@ -1335,35 +1369,11 @@ rule("[SUB] HUDHandler")
 		If(Hero Of(Event Player) == Hero(Ana));
 		Else If(Hero Of(Event Player) == Hero(Bastion));
 			Wait(0.016, Ignore Condition);
-			Create HUD Text(Filtered Array(Event Player, Hero Of(Event Player) == Hero(Bastion)), Custom String("{0}%", Round To Integer(
-				Event Player.AbilityVariableChase_I, To Nearest)), Custom String("Passive: Ammo Reserve"), Custom String("{0}",
-				Ability Icon String(Hero(Bastion), Button(Primary Fire))), Left, -3, White, Lime Green, White, Visible To and String,
-				Default Visibility);
+			Create HUD Text(Filtered Array(Filtered Array(Event Player, Event Player.IsUsingAbility[1] == True), Hero Of(Event Player) == Hero(
+				Bastion)), Custom String("{1} Cooldown will be {0}s", (160 - Ammo(Event Player, 1)) / 10, Ability Icon String(Hero(Bastion),
+				Button(Ability 1))), Null, Null, Top, 1, Red, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
 			Event Player.HudText[0] = 1;
-		Else If(Hero Of(Event Player) == Hero(McCree));
-			Wait(0.016, Ignore Condition);
-			Create HUD Text(Filtered Array(Filtered Array(Event Player, Hero Of(Event Player) == Hero(McCree)),
-				Event Player.AbilityVariables[1] != 0), Event Player.AbilityVariables[1], Custom String(
-				"Primary/Secondary Fire: Reloading..."), Custom String("Peacemaker"), Left, -3, Red, Red, Red, Visible To and String,
-				Default Visibility);
-			Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
-			Create HUD Text(Filtered Array(Filtered Array(Event Player, Hero Of(Event Player) == Hero(McCree)),
-				Event Player.AbilityVariables[1] == 0), Icon String(Checkmark), Custom String("Primary/Secondary Fire: Loaded"), Custom String(
-				"Peacemaker"), Left, -3, White, Red, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
-			Event Player.HudText[0] = 2;
-		Else If(Hero Of(Event Player) == Hero(Lúcio));
-			Wait(0.016, Ignore Condition);
-			Create HUD Text(Filtered Array(Event Player, Event Player.IsUsingAbility[1] == True), Null, Custom String(
-				"Ability 1: Now Playing"), Custom String("Speed Boost"), Left, -2, White, Green, Green, Visible To and String,
-				Default Visibility);
-			Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
-			Create HUD Text(Filtered Array(Event Player, Event Player.IsUsingAbility[1] == False), Null, Custom String(
-				"Ability 1: Now Playing"), Custom String("Damage Boost"), Left, -2, White, Green, Blue, Visible To and String,
-				Default Visibility);
-			Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
-			Event Player.HudText[0] = 2;
 		Else;
 		End;
 	}
@@ -1417,61 +1427,67 @@ rule("[SUB] InfoHUDHandler")
 		"HEROES, ANA"
 		If(Hero Of(Event Player) == Hero(Ana));
 			"Bio Grenade"
-			Create HUD Text(Event Player, Custom String("{0}: Biotic Grenade", Ability Icon String(Hero(Ana), Button(Ability 2))), Null, Null,
+			Create HUD Text(Event Player, Custom String("{0}: Presumed Dead", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null,
 				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Provides an escape if thrown down while jumping"), Left, 2, White, White,
-				White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Sleep Dart"
-			Create HUD Text(Event Player, Custom String("{0}: Sleep Dart", Ability Icon String(Hero(Ana), Button(Ability 1))), Null, Null,
-				Left, 3, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Gives you a speed boost on hit"), Left, 4, White, White, White,
+			Create HUD Text(Event Player, Null, Null, Custom String("Gives many more escape tools:"), Left, 2, White, White, White,
 				Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Reduces your {2} cooldown", Null, Null, Ability Icon String(Hero(Ana),
-				Button(Ability 2))), Left, 5, White, White, White, Visible To and String, Default Visibility);
+			Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
+				Ability Icon String(Hero(Ana), Button(Ability 2))), Left, 3, White, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Effects stop and cooldown starts after enemy wake up"), Left, 6, White,
+			Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
+				Button(Ability 1))), Left, 4, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Left, 5, White,
 				White, Red, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			"Ultimate"
 			Create HUD Text(Event Player, Custom String("{0} : Nano Volley", Ability Icon String(Hero(Ana), Button(Ultimate))), Null, Null,
-				Left, 7, Sky Blue, White, White, Visible To and String, Default Visibility);
+				Left, 6, Sky Blue, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			Create HUD Text(Event Player, Null, Null, Custom String("Throws a volley of {2} at high speeds!", Null, Null, Ability Icon String(
-				Hero(Ana), Button(Ability 2))), Left, 8, White, White, White, Visible To and String, Default Visibility);
+				Hero(Ana), Button(Ability 2))), Left, 7, White, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 8;
+			Event Player.InfoHUDText[0] = 7;
 		"Ashe"
 		Else If(Hero Of(Event Player) == Hero(Ashe));
 			"Coach Gun"
-			Create HUD Text(Event Player, Custom String("{0} : Coach Gun", Ability Icon String(Hero(Ashe), Button(Ability 1))), Null, Null,
+			Create HUD Text(Event Player, Custom String("{0} : Double Cross", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null,
 				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("You can use Coach Gun twice!"), Left, 2, White, White, White,
-				Visible To and String, Default Visibility);
+			Create HUD Text(Event Player, Null, Null, Custom String("You can use {0} twice!", Ability Icon String(Hero(Ashe), Button(
+				Ability 1))), Left, 2, White, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			Create HUD Text(Event Player, Null, Null, Custom String("Cooldown starts automatically if second shot is not used"), Left, 3,
 				White, White, Red, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			Event Player.InfoHUDText[0] = 3;
 		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(Baptiste));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Window Of Opportunity...", Ability Icon String(Hero(Baptiste), Button(
+				Secondary Fire))), Null, Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Provides Baptiste with a matrix that triples his healing recieved"), Left,
+				2, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Cooldown is shared with {0}", Ability Icon String(Hero(Baptiste), Button(
+				Ability 2))), Left, 3, White, White, Red, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 3;
+		"PLACEHOLDERS"
 		Else If(Hero Of(Event Player) == Hero(Bastion));
 			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Reconfigure", Ability Icon String(Hero(Bastion), Button(Ultimate))), Null, Null,
-				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Create HUD Text(Event Player, Custom String("{0} : Reconfigure", Ability Icon String(Hero(Bastion), Button(Ability 1))), Null,
+				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			Create HUD Text(Event Player, Null, Null, Custom String("{0} has limited ammo that regenerates outside of {0} form",
 				Ability Icon String(Hero(Bastion), Button(Primary Fire))), Left, 2, White, White, White, Visible To and String,
 				Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Holding jump in {0} form moves you forward slowly", Ability Icon String(
-				Hero(Bastion), Button(Primary Fire))), Left, 3, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("You can only {0} if at 100% ammo", Ability Icon String(Hero(Bastion),
-				Button(Ability 1))), Left, 4, White, White, Red, Visible To and String, Default Visibility);
+			Create HUD Text(Event Player, Null, Null, Custom String("You can only {0} after a set time based on how much ammo was used",
+				Ability Icon String(Hero(Bastion), Button(Ability 1))), Left, 4, White, White, Red, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			"Name of Thing"
 			Create HUD Text(Event Player, Custom String("{0} : Null Wrecker", Ability Icon String(Hero(Bastion), Button(Ultimate))), Null,
@@ -1485,33 +1501,41 @@ rule("[SUB] InfoHUDHandler")
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			Event Player.InfoHUDText[0] = 7;
 		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(McCree));
+		Else If(Hero Of(Event Player) == Hero(Brigitte));
 			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Peacekeeper", Ability Icon String(Hero(McCree), Button(Primary Fire))), Null,
+			Create HUD Text(Event Player, Custom String("{0} : Proven Mettle", Ability Icon String(Hero(Brigitte), Button(Ability 2))), Null,
 				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Primary and Secondary fire are cooldown-based"), Left, 2, White, White,
-				Red, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0}: Draw ", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null, Left, 3,
-				Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Using any ability resets your {0} cooldown", Ability Icon String(Hero(
-				McCree), Button(Primary Fire))), Left, 4, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Headshots and kills severely lower your {0} cooldown",
-				Ability Icon String(Hero(McCree), Button(Primary Fire))), Left, 5, White, White, White, Visible To and String,
-				Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Deadeye", Ability Icon String(Hero(McCree), Button(Ultimate))), Null, Null,
-				Left, 6, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("No longer slows you down"), Left, 7, White, White, White,
+			Create HUD Text(Event Player, Null, Null, Custom String("Provides a speed buff when used"), Left, 2, White, White, White,
 				Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 7;
+			Create HUD Text(Event Player, Null, Null, Custom String("Length of buff changes depending on charge"), Left, 3, White, White,
+				White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Using 3 charges provides temporary armor"), Left, 4, White, White, White,
+				Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 4;
+		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(McCree));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0}: Draw", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null, Left, 1,
+				Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Critical hits lowers your {0} cooldown slightly", Ability Icon String(
+				Hero(McCree), Button(Ability 1))), Left, 2, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Getting a kill resets your {0} cooldown", Ability Icon String(Hero(
+				McCree), Button(Ability 1))), Left, 3, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0}: Fan the Hammer", Ability Icon String(Hero(McCree), Button(Secondary Fire))),
+				Null, Null, Left, 4, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Saves the rest of your bullets on elimination", Ability Icon String(Hero(
+				McCree), Button(Ability 1))), Left, 5, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 5;
 		"PLACEHOLDERS"
 		Else If(Hero Of(Event Player) == Hero(Lúcio));
 			"Name of Thing"
@@ -1530,16 +1554,6 @@ rule("[SUB] InfoHUDHandler")
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			Event Player.InfoHUDText[0] = 4;
 		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Hanzo));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Shock Arrow", Ability Icon String(Hero(Hanzo), Button(Ability 2))), Null, Null,
-				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Storm arrows cause small explosions upon impact"), Left, 2, White, White,
-				White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 2;
-		"PLACEHOLDERS"
 		Else If(Hero Of(Event Player) == Hero(Mei));
 			"Name of Thing"
 			Create HUD Text(Event Player, Custom String("{0} : Chilled", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null, Left, 1,
@@ -1549,27 +1563,43 @@ rule("[SUB] InfoHUDHandler")
 				White, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Cryo-Freeze", Ability Icon String(Hero(Mei), Button(Ability 1))), Null, Null,
-				Left, 3, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Heals more, but is shorter in duration"), Left, 4, White, White, White,
-				Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Name of Thing"
 			Create HUD Text(Event Player, Custom String("{0} : Ice Wall", Ability Icon String(Hero(Mei), Button(Ability 2))), Null, Null, Left,
-				5, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Cooldown is lowered significantly"), Left, 6, White, White, White,
-				Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Health of each pillar is lowered significantly"), Left, 7, White, White,
-				Red, Visible To and String, Default Visibility);
+				3, Sky Blue, White, White, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
 			Create HUD Text(Event Player, Null, Null, Custom String(
 				"Note: There is a visual bug with Mei's HP while placing {0}. Actual damage taken is not changed.", Ability Icon String(Hero(
-				Mei), Button(Ability 2))), Left, 8, White, White, Orange, Visible To and String, Default Visibility);
+				Mei), Button(Ability 2))), Left, 4, White, White, Orange, Visible To and String, Default Visibility);
 			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 8;
+			Event Player.InfoHUDText[0] = 4;
+		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(Pharah));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Guardian's Haste", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null,
+				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Pressing Crouch while using {0} blasts you forwards", Ability Icon String(
+				Hero(Pharah), Button(Ability 1))), Left, 2, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Halves your cooldown", Ability Icon String(Hero(Pharah), Button(
+				Ability 1))), Left, 3, White, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 3;
+		"PLACEHOLDERS"
+		Else If(Hero Of(Event Player) == Hero(Zarya));
+			"Name of Thing"
+			Create HUD Text(Event Player, Custom String("{0} : Particle Flux", Ability Icon String(Hero(Zarya), Button(Ability 2))), Null,
+				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Converts Zarya's shields into ammo (2:1 ratio)"), Left, 2, White, White,
+				White, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Ammo above Max Ammo goes away after a visible timer"), Left, 3, White,
+				White, Red, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Create HUD Text(Event Player, Null, Null, Custom String("Cooldown starts after Ammo returns to under Max Ammo"), Left, 4, White,
+				White, Red, Visible To and String, Default Visibility);
+			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
+			Event Player.InfoHUDText[0] = 4;
 		"ENDING"
 		Else;
 			"Missing Info"
@@ -1630,99 +1660,6 @@ rule("Info Handler")
 	}
 }
 
-rule("Ability 1 Cooldown")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Event Player.AbilityCooldowns[1] > 0;
-		Event Player.IsUsingAbility[1] != True;
-		Is Alive(Event Player) == True;
-	}
-
-	actions
-	{
-		"Check if cooldown is 0"
-		If(Event Player.AbilityCooldowns[1] != 0);
-			"Lower cooldown by 1 after 1 second"
-			Wait(1, Abort When False);
-			Event Player.AbilityCooldowns[1] -= 1;
-			Loop If Condition Is True;
-		"If cooldown is 0"
-		Else;
-			Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
-		End;
-	}
-}
-
-rule("Ability 2 Cooldown")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Event Player.AbilityCooldowns[2] > 0;
-		Event Player.IsUsingAbility[2] != True;
-		Is Alive(Event Player) == True;
-	}
-
-	actions
-	{
-		"Check if cooldown is 0"
-		If(Event Player.AbilityCooldowns[2] != 0);
-			"Lower cooldown by 1 after 1 second"
-			Wait(1, Abort When False);
-			Event Player.AbilityCooldowns[2] -= 1;
-			Loop If Condition Is True;
-		"If cooldown is 0"
-		Else;
-			Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
-		End;
-	}
-}
-
-rule("Ability 3 Cooldown")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Event Player.AbilityCooldowns[3] > 0;
-		Event Player.IsUsingAbility[3] != True;
-		Is Alive(Event Player) == True;
-	}
-
-	actions
-	{
-		"Check if cooldown is 0"
-		If(Event Player.AbilityCooldowns[3] != 0);
-			"Lower cooldown by 1 after 1 second"
-			Wait(1, Abort When False);
-			Event Player.AbilityCooldowns[3] -= 1;
-			Loop If Condition Is True;
-		"If cooldown is 0"
-		Else;
-			Play Effect(Event Player, Ring Explosion Sound, White, Event Player, 50);
-		End;
-	}
-}
-
 rule("Initialize EVERY Character")
 {
 	event
@@ -1754,37 +1691,36 @@ rule("Initialize EVERY Character")
 		"Ashe Custom Stats"
 		If(Hero Of(Event Player) == Hero(Ashe));
 			Event Player.AbilityVariables[1] = 2;
+		"Baptiste Custom Stats"
+		Else If(Hero Of(Event Player) == Hero(Baptiste));
+			Set Secondary Fire Enabled(Event Player, False);
+		"Brigitte Custom Stats"
+		Else If(Hero Of(Event Player) == Hero(Brigitte));
+			Set Damage Dealt(Event Player, 40 / 35 * 100);
+			Event Player.IsStatsChanged = True;
 		"Bastion Custom Stats"
 		Else If(Hero Of(Event Player) == Hero(Bastion));
-			Set Max Health(Event Player, 400 / 300 * 100);
-			Event Player.IsStatsChanged = True;
+			Add Health Pool To Player(Event Player, Health, 100, True, True);
 			Wait(0.016, Ignore Condition);
-			Event Player.AbilityVariableChase_I = 100;
 		"McCree custom stats"
 		Else If(Hero Of(Event Player) == Hero(McCree));
 			Event Player.AbilityVariables[2] = True;
 			Event Player.AbilityVariables[1] = 0;
-		"Pharah Custom Stats"
-		Else If(Hero Of(Event Player) == Hero(Pharah));
-			Event Player.IsStatsChanged = True;
-			Start Damage Modification(Event Player, Event Player, 25 / 40 * 100, None);
-			Event Player.HEROPharahSelfDamageModID = Last Damage Modification ID;
 		"Lucio Custom Stats"
 		Else If(Hero Of(Event Player) == Hero(Lúcio));
 			Set Healing Dealt(Event Player, 0);
 			Event Player.IsStatsChanged = True;
 			Event Player.IsUsingAbility[1] = True;
-		"Hanzo custom stats"
-		Else If(Hero Of(Event Player) == Hero(Hanzo));
-			Event Player.IsStatsChanged = True;
-		Else;
+		"Baptiste Custom Stats"
+		Else If(Hero Of(Event Player) == Hero(Mei));
+			Add Health Pool To Player(Event Player, Health, 195, True, False);
+			Start Scaling Player(Event Player, 1.100, True);
+		"Baptiste Custom Stats"
+		Else If(Hero Of(Event Player) == Hero(Zarya));
+			disabled Set Max Health(Event Player, 50);
+		"Force Wait"
 		End;
 		Wait(0.016, Ignore Condition);
-		"Heal all players to max hp incase of odd max hp behavior"
-		disabled While(Health(Event Player) != Max Health(Event Player));
-		disabled Heal(Event Player, Null, 10000);
-		disabled Wait(0.016, Ignore Condition);
-		disabled End;
 	}
 }
 
@@ -1871,14 +1807,16 @@ rule("[Bastion] Turret Ability Transform")
 			Disallow Button(Event Player, Ability 1);
 			Wait(0.016, Ignore Condition);
 			Loop If(Is Using Ability 1(Event Player) == True);
-			Set Move Speed(Event Player, 50);
+			Set Max Ammo(Event Player, 1, 160);
+			Set Ammo(Event Player, 1, 160);
+			Set Reload Enabled(Event Player, False);
 			Event Player.IsUsingAbility[1] = True;
 			Allow Button(Event Player, Ability 1);
 		Else If(Event Player.IsUsingAbility[1] == True);
 			Disallow Button(Event Player, Ability 1);
 			Wait(0.016, Ignore Condition);
 			Loop If(Is Using Ability 1(Event Player) == True);
-			Set Move Speed(Event Player, 100);
+			Set Reload Enabled(Event Player, True);
 			Set Damage Dealt(Event Player, 100);
 			Event Player.IsUsingAbility[1] = False;
 			Allow Button(Event Player, Ability 1);
@@ -1886,7 +1824,7 @@ rule("[Bastion] Turret Ability Transform")
 	}
 }
 
-rule("[Bastion] Turret Ammo Regen")
+rule("[Bastion] turret ammo display fix")
 {
 	event
 	{
@@ -1903,31 +1841,13 @@ rule("[Bastion] Turret Ammo Regen")
 
 	actions
 	{
-		Chase Player Variable At Rate(Event Player, AbilityVariableChase_I, 100, 6.250, None);
-	}
-}
-
-rule("[Bastion] Turret Ability (Low Ammo Locks Abillity)")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Bastion;
-	}
-
-	conditions
-	{
-		Event Player.AbilityVariableChase_I != 100;
-		Event Player.IsUsingAbility[1] == False;
-		Is Alive(Event Player) == True;
-	}
-
-	actions
-	{
-		Disallow Button(Event Player, Ability 1);
-		Wait(0.016, Ignore Condition);
-		Set Ability 1 Enabled(Event Player, False);
+		Wait(0.017, Ignore Condition);
+		Set Max Ammo(Event Player, 1, 160);
+		Event Player.AbilityVariables[1] = (160 - Ammo(Event Player, 1)) / 10;
+		While(Event Player.AbilityVariables[1] != 0);
+			Event Player.AbilityVariables[1] -= 0.100;
+			Wait(0.100, Ignore Condition);
+		End;
 	}
 }
 
@@ -1944,7 +1864,6 @@ rule("[Bastion] Ulting (in turret mode)")
 	{
 		Is Alive(Event Player) == True;
 		Is Using Ultimate(Event Player) == True;
-		disabled Event Player.IsUsingAbility[1] == True;
 		Is Alive(Event Player) == True;
 	}
 
@@ -1978,59 +1897,19 @@ rule("[Bastion] turret unlock on cooldown finish")
 
 	conditions
 	{
-		Event Player.AbilityVariableChase_I == 100;
+		Event Player.IsUsingAbility[1] == False;
 		Is Alive(Event Player) == True;
 	}
 
 	actions
 	{
+		Wait(0.017, Ignore Condition);
+		Disallow Button(Event Player, Ability 1);
+		Set Ability 1 Enabled(Event Player, False);
+		Wait((160 - Ammo(Event Player, 1)) / 10, Abort When False);
 		Allow Button(Event Player, Ability 1);
 		Set Ability 1 Enabled(Event Player, True);
-		Stop Chasing Player Variable(Event Player, AbilityVariableChase_I);
-	}
-}
-
-rule("[Bastion] Turret Ammo Usage")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Bastion;
-	}
-
-	conditions
-	{
-		Is Firing Primary(Event Player) == True;
-		Event Player.IsUsingAbility[1] == True;
-		Is Alive(Event Player) == True;
-	}
-
-	actions
-	{
-		Chase Player Variable At Rate(Event Player, AbilityVariableChase_I, 0, 20, None);
-	}
-}
-
-rule("[Bastion] Ammo Stop Using")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Bastion;
-	}
-
-	conditions
-	{
-		Is Firing Primary(Event Player) != True;
-		Event Player.IsUsingAbility[1] == True;
-		Is Alive(Event Player) == True;
-	}
-
-	actions
-	{
-		Stop Chasing Player Variable(Event Player, AbilityVariableChase_I);
+		Event Player.AbilityVariables[1] = (160 - Ammo(Event Player, 1)) / 10;
 	}
 }
 
@@ -2045,7 +1924,7 @@ rule("[Bastion] auto-transform out of ammo")
 
 	conditions
 	{
-		Event Player.AbilityVariableChase_I == 0;
+		Ammo(Event Player, 1) == 0;
 		Event Player.IsUsingAbility[1] == True;
 		Is Alive(Event Player) == True;
 	}
@@ -2053,74 +1932,6 @@ rule("[Bastion] auto-transform out of ammo")
 	actions
 	{
 		Press Button(Event Player, Ability 1);
-	}
-}
-
-rule("[Bastion] Movement by pressing Jump (Enable)")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Bastion;
-	}
-
-	conditions
-	{
-		Is Button Held(Event Player, Jump) == True;
-		Is Alive(Event Player) == True;
-		Has Status(Event Player, Frozen) == False;
-		Has Status(Event Player, Knocked Down) == False;
-		Has Status(Event Player, Hacked) == False;
-		Has Status(Event Player, Stunned) == False;
-		Has Status(Event Player, Asleep) == False;
-		Is Using Ultimate(Event Player) == False;
-		Event Player.IsUsingAbility[1] == True;
-	}
-
-	actions
-	{
-		Start Accelerating(Event Player, Forward, 1000, 60, To Player, Direction Rate and Max Speed);
-	}
-}
-
-rule("[Bastion] Movement by pressing Jump (Disable)")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Bastion;
-	}
-
-	conditions
-	{
-		Is Button Held(Event Player, Jump) == False;
-	}
-
-	actions
-	{
-		Stop Accelerating(Event Player);
-	}
-}
-
-rule("[Bastion] movement stop on transform")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Bastion;
-	}
-
-	conditions
-	{
-		Is Using Ability 1(Event Player) == True;
-	}
-
-	actions
-	{
-		Stop Accelerating(Event Player);
 	}
 }
 
@@ -2178,112 +1989,7 @@ rule("[Bastion] (Roadhog Hook Fix)")
 	}
 }
 
-rule("[Bastion] Movement (Dead)")
-{
-	event
-	{
-		Player Died;
-		All;
-		Bastion;
-	}
-
-	actions
-	{
-		Stop Accelerating(Event Player);
-	}
-}
-
-rule("[McCree] Primary Fire Start Reload/Stats")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		McCree;
-	}
-
-	conditions
-	{
-		Is Firing Primary(Event Player) == True;
-	}
-
-	actions
-	{
-		Event Player.AbilityVariables[1] = 1;
-	}
-}
-
-rule("[McCree] Secondary Fire Start Reload/Stats")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		McCree;
-	}
-
-	conditions
-	{
-		Is Firing Secondary(Event Player) == True;
-		Event Player.AbilityVariables[1] == 0;
-	}
-
-	actions
-	{
-		Event Player.AbilityVariables[1] = 2.400;
-		Set Ability Cooldown(Event Player, Button(Ability 1), Ability Cooldown(Event Player, Button(Ability 1)) + 0.336);
-		Set Ability Cooldown(Event Player, Button(Ability 2), Ability Cooldown(Event Player, Button(Ability 2)) + 0.336);
-		Disallow Button(Event Player, Ultimate);
-		Wait(0.366, Ignore Condition);
-		Cancel Primary Action(Event Player);
-		Allow Button(Event Player, Ultimate);
-		Abort If(Event Player.AbilityCooldowns[1] == 0);
-		Set Secondary Fire Enabled(Event Player, False);
-		Disallow Button(Event Player, Secondary Fire);
-	}
-}
-
-rule("[McCree] Roll Reload")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		McCree;
-	}
-
-	conditions
-	{
-		Is Using Ability 1(Event Player) == True;
-	}
-
-	actions
-	{
-		Event Player.AbilityVariables[1] = 0;
-	}
-}
-
-rule("[McCree] Flashbang Reload")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		McCree;
-	}
-
-	conditions
-	{
-		Is Using Ability 2(Event Player) == True;
-	}
-
-	actions
-	{
-		Event Player.AbilityVariables[1] = 0;
-	}
-}
-
-rule("[McCree] McCree Headshot")
+rule("[McCree] Headshot reduces cooldowns")
 {
 	event
 	{
@@ -2299,14 +2005,13 @@ rule("[McCree] McCree Headshot")
 
 	actions
 	{
-		Wait(0.100, Ignore Condition);
-		Event Player.AbilityVariables[1] = 0.490;
+		Wait(0.016, Ignore Condition);
+		Skip If(Is Dead(Victim) == True, 2);
 		Set Ability Cooldown(Event Player, Button(Ability 1), Ability Cooldown(Event Player, Button(Ability 1)) - 1);
-		Set Ability Cooldown(Event Player, Button(Ability 2), Ability Cooldown(Event Player, Button(Ability 2)) - 1);
 	}
 }
 
-rule("[McCree] Reload On Kill")
+rule("[McCree] Cooldown resets on kills")
 {
 	event
 	{
@@ -2317,351 +2022,11 @@ rule("[McCree] Reload On Kill")
 
 	actions
 	{
-		Wait(0.100, Ignore Condition);
-		Event Player.AbilityVariables[1] = 0;
-	}
-}
-
-rule("[McCree] Shot reloading")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		McCree;
-	}
-
-	conditions
-	{
-		Event Player.AbilityVariables[1] != 0;
-	}
-
-	actions
-	{
-		While(Event Player.AbilityVariables[1] != 0);
-			If(Event Player.AbilityVariables[2] != False);
-				disabled Skip If(Event Player.AbilityVariables[2] == False, 5);
-				Event Player.AbilityVariables[2] = False;
-				Set Primary Fire Enabled(Event Player, False);
-				Set Secondary Fire Enabled(Event Player, False);
-				Disallow Button(Event Player, Primary Fire);
-				Disallow Button(Event Player, Secondary Fire);
-			End;
-			Event Player.AbilityVariables[1] -= 0.010;
-			Wait(0.010, Ignore Condition);
+		If(Is Using Ultimate(Event Player) == False);
+			Cancel Primary Action(Event Player);
 		End;
-		Event Player.AbilityVariables[1] = 0;
-		Event Player.AbilityVariables[2] = True;
-		Set Primary Fire Enabled(Event Player, True);
-		Set Secondary Fire Enabled(Event Player, True);
-		Allow Button(Event Player, Primary Fire);
-		Allow Button(Event Player, Secondary Fire);
-	}
-}
-
-rule("[McCree] Ult Stats")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		McCree;
-	}
-
-	conditions
-	{
-		Is Using Ultimate(Event Player) == True;
-	}
-
-	actions
-	{
-		Event Player.AbilityVariables[1] = 0;
-		Set Move Speed(Event Player, 400);
 		Set Ability Cooldown(Event Player, Button(Ability 1), 0);
-		Set Ability Cooldown(Event Player, Button(Ability 2), 0);
-	}
-}
-
-rule("[McCree] Ult Stats Reset")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		McCree;
-	}
-
-	conditions
-	{
-		Is Using Ultimate(Event Player) != True;
-	}
-
-	actions
-	{
-		Set Move Speed(Event Player, 100);
-	}
-}
-
-rule("[Hanzo] Shock Arrows")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Hanzo;
-	}
-
-	conditions
-	{
-		Is Button Held(Event Player, Primary Fire) == True;
-		Is Using Ability 2(Event Player) == True;
-	}
-
-	actions
-	{
-		Set Damage Dealt(Event Player, 50);
-		Event Player.IsStatsChanged = True;
-		Event Player.AbilityVariables[1] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player)
-			+ Facing Direction Of(Event Player) * 100, All Players(All Teams), Event Player, True);
-		Play Effect(All Players(All Teams), Bad Explosion, Sky Blue, Event Player.AbilityVariables[1], 4);
-		Damage(Players Within Radius(Event Player.AbilityVariables[1], 4, All Teams, Surfaces And Enemy Barriers), Event Player, 2);
-		Event Player.IsUsingAbility[1] = True;
-		Wait(0.300, Ignore Condition);
-		Loop If Condition Is True;
-	}
-}
-
-rule("[Hanzo] Stop firing arrow in var")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Hanzo;
-	}
-
-	conditions
-	{
-		Is Button Held(Event Player, Primary Fire) == False;
-		Is Using Ability 2(Event Player) == True;
-	}
-
-	actions
-	{
-		Event Player.IsUsingAbility[1] = False;
-	}
-}
-
-rule("[Hanzo] Set firing speed Shock")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Hanzo;
-	}
-
-	conditions
-	{
-		Is Using Ability 2(Event Player) == True;
-	}
-
-	actions
-	{
-		Set Projectile Speed(Event Player, 100 * 10000);
-		Event Player.IsUsingAbility[2] = True;
-	}
-}
-
-rule("[Hanzo] Set firing speed Out of time/Arrows")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Hanzo;
-	}
-
-	conditions
-	{
-		Event Player.IsUsingAbility[2] == True;
-		Is Using Ability 2(Event Player) == False;
-	}
-
-	actions
-	{
-		If(Is Button Held(Event Player, Primary Fire) == True);
-			Event Player.AbilityVariables[1] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player)
-				+ Facing Direction Of(Event Player) * 100, All Players(All Teams), Event Player, True);
-			Play Effect(All Players(All Teams), Bad Explosion, Sky Blue, Event Player.AbilityVariables[1], 4);
-			Damage(Players Within Radius(Event Player.AbilityVariables[1], 4, All Teams, Surfaces And Enemy Barriers), Event Player, 1);
-			Event Player.IsUsingAbility[1] = True;
-			Wait(0.050, Ignore Condition);
-		End;
-		Event Player.IsUsingAbility[1] = False;
-		Event Player.IsUsingAbility[2] = False;
-		Set Damage Dealt(Event Player, 100);
-		Set Projectile Speed(Event Player, 100);
-		Wait(0.100, Ignore Condition);
-	}
-}
-
-rule("[Hanzo] Shock Arrow Damage Calculations")
-{
-	event
-	{
-		Player Took Damage;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Hero Of(Attacker) == Hero(Hanzo);
-		Event Damage <= 3;
-	}
-
-	actions
-	{
-		"Actual max damage = 35"
-		Damage(Event Player, Attacker, (9 + (25 - Distance Between(Attacker.AbilityVariables[1], Position Of(Event Player)) / 4 * 25))
-			/ 0.500);
-	}
-}
-
-rule("[Pharah] Jump Jets Forward")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Pharah;
-	}
-
-	conditions
-	{
-		Is Using Ability 1(Event Player) == True;
-	}
-
-	actions
-	{
-		Apply Impulse(Event Player, Forward, 17.666, To Player, Incorporate Contrary Motion);
-	}
-}
-
-rule("[Pharah] Rocket Jumps/Pogo-Jumping/C-Taps allow market garden")
-{
-	event
-	{
-		Player Received Knockback;
-		All;
-		Pharah;
-	}
-
-	conditions
-	{
-		Attacker == Event Player;
-		Is Using Ultimate(Event Player) == False;
-	}
-
-	actions
-	{
-		Enable Inspector Recording;
-		Set Move Speed(Event Player, 125);
-		Event Player.IsStatsChanged = True;
-		"If doing a rocket jump crouched"
-		If(Is Button Held(Event Player, Crouch) == True);
-			"Check for if C-tap hasnt been done yet then check for jump input"
-			If(Event Player.AbilityVariables[1] == False);
-				If(Is Button Held(Event Player, Jump) == True);
-					"C-Tap"
-					Apply Impulse(Event Player, Event Direction, 6, To World, Incorporate Contrary Motion);
-					Event Player.AbilityVariables[1] = True;
-				Else;
-					"Pogo Jumps"
-					Apply Impulse(Event Player, Up, 3, To World, Cancel Contrary Motion);
-					Apply Impulse(Event Player, Forward, 3, To Player, Incorporate Contrary Motion);
-				End;
-			"If C-Tap has been done, perform secondary C-Tap jump"
-			Else;
-				Apply Impulse(Event Player, Event Direction, 6, To World, Incorporate Contrary Motion);
-			End;
-		"If not holding crouch"
-		Else;
-			"Check for jump input"
-			If(Is Button Held(Event Player, Jump) == True);
-				Apply Impulse(Event Player, Event Direction, 4, To World, Incorporate Contrary Motion);
-			"Do normal small jump"
-			Else;
-				Apply Impulse(Event Player, Event Direction, 1, To World, Incorporate Contrary Motion);
-			End;
-		End;
-		Disable Inspector Recording;
-	}
-}
-
-rule("[Pharah] C-Tap/Strafe speed Reset on landing")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Pharah;
-	}
-
-	conditions
-	{
-		Is On Ground(Event Player) == True;
-	}
-
-	actions
-	{
-		Set Move Speed(Event Player, 100);
-		Event Player.AbilityVariables[1] = Null;
-	}
-}
-
-rule("[Pharah] Market Garden")
-{
-	event
-	{
-		Player Dealt Damage;
-		All;
-		Pharah;
-	}
-
-	conditions
-	{
-		Event Player.AbilityVariables[1] == True;
-		Is Meleeing(Event Player) == True;
-	}
-
-	actions
-	{
-		"30 + this damage"
-		Damage(Victim, Event Player, 165);
-		Wait(1, Ignore Condition);
-	}
-}
-
-rule("[Pharah] Rocket Jump Ray Cast for impulse positioning")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Pharah;
-	}
-
-	conditions
-	{
-		Is Firing Primary(Event Player) == True;
-	}
-
-	actions
-	{
-		Event Player.AbilityVariables[2] = Ray Cast Hit Position(Eye Position(Event Player), Eye Position(Event Player)
-			+ Facing Direction Of(Event Player) * 15, All Players(All Teams), Event Player, True);
+		Play Effect(Event Player, Buff Impact Sound, White, Event Player, 60);
 	}
 }
 
@@ -2867,111 +2232,6 @@ rule("[Ana] Ultimate: Biotic Volley")
 	}
 }
 
-disabled rule("Rule 74")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-}
-
-disabled rule("Rule 75")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-}
-
-rule("[Mei] Chilled Debuff Apply")
-{
-	event
-	{
-		Player Dealt Damage;
-		All;
-		Mei;
-	}
-
-	conditions
-	{
-		Victim.HEROMeiChilledPassive == Null;
-	}
-
-	actions
-	{
-		Start Damage Modification(All Players(All Teams), Victim, 88, Receivers Damagers and Damage Percent);
-		Victim.HEROMeiChilledDebuff = Last Damage Modification ID;
-		Create Effect(All Players(All Teams), Sparkles, Blue, Victim, 0.650, Visible To Position and Radius);
-		Victim.HEROMeiChilledPassive = Last Created Entity;
-	}
-}
-
-rule("[Mei] Chilled Debuff Remove")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Event Player.HEROMeiChilledPassive != Null;
-	}
-
-	actions
-	{
-		Wait(4, Ignore Condition);
-		Stop Damage Modification(Event Player.HEROMeiChilledDebuff);
-		Destroy Effect(Event Player.HEROMeiChilledPassive);
-		Event Player.HEROMeiChilledDebuff = Null;
-		Event Player.HEROMeiChilledPassive = Null;
-	}
-}
-
-rule("[Mei] Detect IceWall Activation")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Mei;
-	}
-
-	conditions
-	{
-		Is Using Ability 2(Event Player) == True;
-	}
-
-	actions
-	{
-		Event Player.HEROMeiIceWall = 1;
-		Start Rule(HEROMeiIceWallStats, Restart Rule);
-	}
-}
-
-rule("[Mei] Detect Placement Deactivation")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Mei;
-	}
-
-	conditions
-	{
-		Is Using Ability 2(Event Player) == False;
-	}
-
-	actions
-	{
-		Event Player.HEROMeiIceWall = 0;
-		Start Rule(HEROMeiIceWallStats, Restart Rule);
-	}
-}
-
 rule("[Mei] IceWall Duration")
 {
 	event
@@ -2983,19 +2243,14 @@ rule("[Mei] IceWall Duration")
 
 	conditions
 	{
-		Event Player.HEROMeiIceWall == Absolute Value(1);
+		Is Using Ability 2(Event Player) == True;
 		Is Button Held(Event Player, Primary Fire) == True;
 	}
 
 	actions
 	{
-		"Reset All"
-		Set Max Health(Event Player, 100);
-		"Divide effective HP vs actual max hp so Mei doesnt take more damage than usual"
-		Set Damage Received(Event Player, 100);
-		"Divide effective HP vs actual max hp so Mei doesnt take more healing than usual"
-		Set Healing Received(Event Player, 100);
 		Wait(4, Ignore Condition);
+		Abort If(Is Using Ability 2(Event Player) == False);
 		Press Button(Event Player, Ability 2);
 	}
 }
@@ -3021,30 +2276,300 @@ rule("[Mei] IceBlock Duration")
 	}
 }
 
-rule("[Mei] IceWallHealthChecks")
+rule("[Pharah] Jump Jets Forward")
 {
 	event
 	{
-		Subroutine;
-		HEROMeiIceWallStats;
+		Ongoing - Each Player;
+		All;
+		Pharah;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
 	}
 
 	actions
 	{
-		If(Event Player.HEROMeiIceWall == True);
-			Event Player.IsStatsChanged = True;
-			"Make max hp of ice wall 250 from 560"
-			Set Max Health(Event Player, 250 / 560 * 100);
-			"Divide effective HP vs actual max hp so Mei doesnt take more damage than usual"
-			Set Damage Received(Event Player, 156 / 350 * 100);
-			"Divide effective HP vs actual max hp so Mei doesnt take more healing than usual"
-			Set Healing Received(Event Player, 156 / 350 * 100);
+		If(Is Button Held(Event Player, Crouch) == True);
+			Apply Impulse(Event Player, Vector(0, -1.250, 2), 17.666, To Player, Incorporate Contrary Motion);
+			Set Ability Cooldown(Event Player, Button(Ability 1), 6);
 		Else;
-			"Reset All"
-			Set Max Health(Event Player, 100);
-			"Divide effective HP vs actual max hp so Mei doesnt take more damage than usual"
-			Set Damage Received(Event Player, 100);
-			"Divide effective HP vs actual max hp so Mei doesnt take more healing than usual"
-			Set Healing Received(Event Player, 100);
+		End;
+	}
+}
+
+rule("[Baptiste] Window Of Opportunity... Secondary Fire")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Baptiste;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Secondary Fire) == True;
+		Ability Cooldown(Event Player, Button(Ability 2)) == 0;
+		Is Using Ability 2(Event Player) == False;
+		Is Alive(Event Player) == True;
+		Is Communicating Any Emote(Event Player) == False;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Ability 2), Ability Cooldown(Event Player, Button(Ability 2)) + 20);
+		Event Player.IsUsingAbility[1] = True;
+		Event Player.IsStatsChanged = True;
+		Set Healing Received(Event Player, 300);
+		Play Effect(Event Player, Buff Explosion Sound, White, Event Player, 100);
+		Wait(5.500, Ignore Condition);
+		Set Healing Received(Event Player, 100);
+		Event Player.IsUsingAbility[1] = Null;
+		Event Player.IsStatsChanged = False;
+	}
+}
+
+rule("[Brigitte] Overload/Proven Mettle")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Brigitte;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Ability 2) == True;
+	}
+
+	actions
+	{
+		If(Ability Charge(Event Player, Button(Ability 2)) == 3);
+			Set Ability 2 Enabled(Event Player, False);
+			Set Ability Charge(Event Player, Button(Ability 2), 0);
+			Event Player.IsUsingAbility[1] = True;
+			Add Health Pool To Player(Event Player, Armor, 50, False, True);
+			Set Move Speed(Event Player, 130);
+			Wait(5, Ignore Condition);
+			Set Ability 2 Enabled(Event Player, True);
+			Set Move Speed(Event Player, 100);
+			Event Player.IsUsingAbility[1] = False;
+			Remove All Health Pools From Player(Event Player);
+		Else If(Ability Charge(Event Player, Button(Ability 2)) >= 2);
+			Set Ability Charge(Event Player, Button(Ability 2), 0);
+			Event Player.IsUsingAbility[1] = True;
+			Set Move Speed(Event Player, 130);
+			Set Ability 2 Enabled(Event Player, False);
+			Wait(5, Ignore Condition);
+			Set Ability 2 Enabled(Event Player, True);
+			Set Move Speed(Event Player, 100);
+			Event Player.IsUsingAbility[1] = False;
+		Else If(Ability Charge(Event Player, Button(Ability 2)) >= 1);
+			Set Ability Charge(Event Player, Button(Ability 2), 0);
+			Event Player.IsUsingAbility[1] = True;
+			Set Move Speed(Event Player, 130);
+			Set Ability 2 Enabled(Event Player, False);
+			Wait(3, Ignore Condition);
+			Set Ability 2 Enabled(Event Player, True);
+			Set Move Speed(Event Player, 100);
+			Event Player.IsUsingAbility[1] = False;
+		Else;
+		End;
+		Set Ability Resource(Event Player, Button(Ability 2), 0);
+	}
+}
+
+rule("[Zarya] Ability 2 start")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Zarya;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Ability 2) == True;
+		Ability Cooldown(Event Player, Button(Ability 2)) == 0;
+		Is Using Ability 1(Event Player) == False;
+		Has Spawned(Event Player) == True;
+		Health Of Type(Event Player, Shields) >= 50;
+	}
+
+	actions
+	{
+		"cooldown management"
+		Set Ability 2 Enabled(Event Player, False);
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) + Health Of Type(Event Player, Shields) * (1 / 2));
+		Damage(Event Player, Null, Health Of Type(Event Player, Shields));
+		Play Effect(All Players(All Teams), Ring Explosion, Purple, Event Player, 8);
+		Wait(0.100, Ignore Condition);
+		If(Ammo(Event Player, 0) > Max Ammo(Event Player, 0));
+			Set Ability Cooldown(Event Player, Button(Ability 2), 7);
+		Else If(Ammo(Event Player, 0) <= Max Ammo(Event Player, 0));
+			Set Ability Cooldown(Event Player, Button(Ability 2), 15.900);
+	}
+}
+
+rule("[Zarya] Cooldown starts upon less than max ammo")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Zarya;
+	}
+
+	conditions
+	{
+		Ammo(Event Player, 0) > Max Ammo(Event Player, 0);
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		While(Ammo(Event Player, 0) > Max Ammo(Event Player, 0));
+			Wait(0.016, Ignore Condition);
+			Abort If(Is Alive(Event Player) == False);
+		End;
+		Set Ability Cooldown(Event Player, Button(Ability 2), 16);
+		Play Effect(Event Player, Debuff Impact Sound, White, Event Player, 25);
+		Set Ability 2 Enabled(Event Player, True);
+	}
+}
+
+rule("[Zarya] \"Overheal Ammo\" goes away after time")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Zarya;
+	}
+
+	conditions
+	{
+		Ammo(Event Player, 0) > Max Ammo(Event Player, 0);
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(7, Abort When False);
+		Set Ammo(Event Player, 0, Max Ammo(Event Player, 0));
+		Play Effect(Event Player, Debuff Impact Sound, White, Event Player, 200);
+	}
+}
+
+rule("[Zarya] Ability 2 disabled by Ability 1")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Zarya;
+	}
+
+	conditions
+	{
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Ability 2 Enabled(Event Player, False);
+	}
+}
+
+rule("[Zarya] Ability 2 disabled by too low HP")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Zarya;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Ability 2)) == 0;
+		Is Using Ability 1(Event Player) == False;
+		Health Of Type(Event Player, Shields) < 50;
+	}
+
+	actions
+	{
+		Set Ability 2 Enabled(Event Player, False);
+	}
+}
+
+rule("[Zarya] Ability 2 enabled when Ability 1 is over AND HP is high enough")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Zarya;
+	}
+
+	conditions
+	{
+		Ability Cooldown(Event Player, Button(Ability 2)) == 0;
+		Is Using Ability 1(Event Player) == False;
+		Health Of Type(Event Player, Shields) >= 50;
+	}
+
+	actions
+	{
+		Set Ability 2 Enabled(Event Player, True);
+	}
+}
+
+rule("[Lucio] Damage song boosts boop")
+{
+	event
+	{
+		Player Received Knockback;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Hero Of(Attacker) == Hero(Lúcio);
+		Is Using Ability 1(Attacker) == False;
+		Is Using Ability 2(Attacker) == False;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Event Direction, 10, To World, Incorporate Contrary Motion);
+	}
+}
+
+rule("[Lucio] Damage amp boosts boop more")
+{
+	event
+	{
+		Player Received Knockback;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Hero Of(Attacker) == Hero(Lúcio);
+		Is Using Ability 2(Attacker) == True;
+		Is Using Ability 1(Attacker) == False;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Event Direction, 15, To World, Incorporate Contrary Motion);
 	}
 }
