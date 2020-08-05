@@ -77,6 +77,19 @@ settings
 				Whip Shot Knockback Scalar: 110%
 			}
 
+			D.Va
+			{
+				Call Mech Knockback Scalar: 150%
+			}
+
+			Doomfist
+			{
+				Ammunition Regeneration Time Scalar: 150%
+				Projectile Speed: 80%
+				Rising Uppercut Cooldown Time: 0%
+				Rocket Punch Cooldown Time: 75%
+			}
+
 			Hanzo
 			{
 				Lunge Distance Scalar: 114%
@@ -93,7 +106,7 @@ settings
 
 			McCree
 			{
-				Combat Roll Cooldown Time: 80%
+				Combat Roll Cooldown Time: 133%
 			}
 
 			Mei
@@ -109,6 +122,13 @@ settings
 			{
 				Hover Jets Maximum Time: 95%
 				Jump Jet Cooldown Time: 87%
+			}
+
+			Reinhardt
+			{
+				Charge Cooldown Time: 80%
+				Rocket Hammer Knockback Scalar: 150%
+				Spawn With Ultimate Ready: On
 			}
 
 			Soldier: 76
@@ -130,15 +150,23 @@ settings
 				Ashe
 				Baptiste
 				Bastion
+				D.Va
+				Doomfist
 				Lúcio
 				McCree
 				Mei
 				Pharah
+				Reinhardt
 				Soldier: 76
 				Zarya
 				Zenyatta
 			}
 		}
+	}
+
+	workshop
+	{
+		Enable Short Cooldowns: On
 	}
 }
 
@@ -149,29 +177,35 @@ variables
 		1: DmgTestBotSpawnerPos
 		2: HostCheatsEnabled
 		3: StatusTestBotSpawnerPos
-		5: RulerEnabled
-		8: antiCrashActive
+		4: RulerEnabled
+		5: antiCrashActive
 
 	player:
 		0: HudText
 		1: IsUsingAbility
-		3: AbilityVariables
-		4: AbilityEffects
-		5: AbilityVariableChase_I
-		6: AbilityVariableChase_II
-		7: IsStatsChanged
-		8: InfoHUDText
-		9: FastCooldownsToggle
-		10: LocalForLoopCounter
-		12: PlayerGUIPrompt
-		13: PlayerGUIArray
-		30: RulerPointer
-		31: RulerMode
-		32: RulerState
-		33: RulerPos1
-		34: RulerPos2
-		35: RulerPos3
-		36: RulerAngle
+		2: AbilityVariables
+		3: AbilityEffects
+		4: AbilityVariableChase_I
+		5: AbilityVariableChase_II
+		6: IsStatsChanged
+		7: FastCooldownsToggle
+		8: LocalForLoopCounter
+		9: PlayerInfoPrompt
+		10: PlayerInfoArray
+		11: RulerPointer
+		12: RulerMode
+		13: RulerState
+		14: RulerPos1
+		15: RulerPos2
+		16: RulerPos3
+		17: RulerAngle
+		18: IsFortified
+		19: IsMantling
+		20: MantleBlacklist
+		21: FlagGeneric
+		22: DVaMekaHealth
+		23: ModificationValue
+		24: RecordedPosition
 }
 
 subroutines
@@ -180,7 +214,6 @@ subroutines
 	1: EffectHandler
 	2: HUDHandler
 	3: InfoHUDDespawner
-	4: InfoHUDHandler
 }
 
 rule("[Toggleable Options and More] (most require debug scripts added)")
@@ -1390,77 +1423,6 @@ rule("[SUB] HUDHandler")
 	}
 }
 
-rule("[SUB] InfoHUDDespawner")
-{
-	event
-	{
-		Subroutine;
-		InfoHUDDespawner;
-	}
-
-	actions
-	{
-		"Erase all previous effects"
-		While(Event Player.InfoHUDText[0] != -1);
-			Destroy HUD Text(Last Of(Event Player.InfoHUDText));
-			Modify Player Variable(Event Player, InfoHUDText, Remove From Array By Value, Last Of(Event Player.InfoHUDText));
-			Event Player.InfoHUDText[0] -= 1;
-			Wait(0.016, Ignore Condition);
-		End;
-		Wait(0.016, Ignore Condition);
-	}
-}
-
-rule("Per-Hero Info Notification")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-
-	actions
-	{
-		Create HUD Text(All Players(All Teams), Null, Null, Custom String("Use voice line up for per-hero info"), Left, -100, White, White,
-			White, Visible To and String, Visible Never);
-	}
-}
-
-rule("Info Handler")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		Is Communicating(Event Player, Voice Line Up) == True;
-	}
-
-	actions
-	{
-		"Despawn all previous things"
-		Call Subroutine(InfoHUDDespawner);
-		"Get and Display Info"
-		Call Subroutine(InfoHUDHandler);
-		"Check for player deaths"
-		Wait(4, Restart When True);
-		Abort If(Is Dead(Event Player) == True);
-		Wait(4, Restart When True);
-		Abort If(Is Dead(Event Player) == True);
-		Wait(4, Restart When True);
-		Abort If(Is Dead(Event Player) == True);
-		Wait(4, Restart When True);
-		Abort If(Is Dead(Event Player) == True);
-		Wait(4, Restart When True);
-		Abort If(Is Dead(Event Player) == True);
-		"Despawn all previous Info HUDs"
-		Call Subroutine(InfoHUDDespawner);
-	}
-}
-
 rule("Player Dies (Erase previous modifiers)")
 {
 	event
@@ -1550,6 +1512,110 @@ rule("Initialize EVERY Character")
 		"Force Wait"
 		End;
 		Wait(0.016, Ignore Condition);
+	}
+}
+
+rule("Ledge Grab/Mantling (By WetHarmonica#11357)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is In Air(Event Player) == True;
+		Is Button Held(Event Player, Jump) == True;
+		"'Forward' is pressed."
+		Z Component Of(Throttle Of(Event Player)) > 0;
+		"Crouch to override Ledge Climb commands"
+		Is Button Held(Event Player, Crouch) != True;
+		((Hero Of(Event Player) == Hero(D.Va) || Hero Being Duplicated(Event Player) == Hero(D.Va)) && Is In Alternate Form(Event Player)
+			!= True) != True;
+		Event Player.IsMantling != True;
+		Event Player.MantleBlacklist != True;
+		Array Contains(Array(Hero(Bastion), Hero(Echo), Hero(Genji), Hero(Hanzo), Hero(Orisa), Hero(Pharah), Hero(Reinhardt), Hero(
+			Roadhog), Hero(Sigma), Hero(Wrecking Ball), Hero(Zarya), Hero(Brigitte), Hero(Lúcio)), Hero Of(Event Player)) != True;
+		"Checks to make sure there is no surface between a point above the player and the ledge they want to climb (so that they can both get to a desired point, as well as potentially stand there)"
+		Is In Line of Sight(Eye Position(Event Player) + World Vector Of(Vector(0, 1, 0), Event Player, Rotation), Eye Position(
+			Event Player) + World Vector Of(Vector(0, 1, 1.500), Event Player, Rotation), Barriers Do Not Block LOS) == True;
+		"Checks to make sure the floor that is being detected (in front and above of the player) is not a steep slope."
+		Y Component Of(Ray Cast Hit Normal(Eye Position(Event Player) + World Vector Of(Vector(0, 0.500, 0.800), Event Player, Rotation),
+			Eye Position(Event Player) + World Vector Of(Vector(0, -1.500, 0.800), Event Player, Rotation), Null, All Players(All Teams),
+			True)) > 0.450;
+		"Checks for a floor above and ahead of the player by 'looking' down above and in front of them."
+		Distance Between(Eye Position(Event Player) + World Vector Of(Vector(0, 0.500, 0.800), Event Player, Rotation),
+			Ray Cast Hit Position(Eye Position(Event Player) + World Vector Of(Vector(0, 0.500, 0.800), Event Player, Rotation),
+			Eye Position(Event Player) + World Vector Of(Vector(0, -1.500, 0.800), Event Player, Rotation), Null, All Players(All Teams),
+			True)) <= 1;
+		"Checks to make sure there is enough height above the ledge to fit the player by 'looking' up above and ahead of them."
+		Distance Between(Eye Position(Event Player) + World Vector Of(Vector(0, 0.500, 0.800), Event Player, Rotation),
+			Ray Cast Hit Position(Eye Position(Event Player) + World Vector Of(Vector(0, 0.500, 0.800), Event Player, Rotation),
+			Eye Position(Event Player) + World Vector Of(Vector(0, 2.500, 0.800), Event Player, Rotation), Null, All Players(All Teams),
+			True)) >= 1.500;
+	}
+
+	actions
+	{
+		Event Player.IsMantling = True;
+		Skip If((Hero Of(Event Player) == Hero(Sombra) && Is Using Ability 1(Event Player) == True) == True, 1);
+		Set Status(Event Player, Null, Knocked Down, 0.200);
+		Set Status(Event Player, Null, Rooted, 0.200);
+		Apply Impulse(Event Player, Up, 8, To World, Cancel Contrary Motion);
+		Wait(0.200, Ignore Condition);
+		Apply Impulse(Event Player, Forward, 2, To Player, Cancel Contrary Motion);
+		Wait(0.700, Ignore Condition);
+		"This version of the code is based around a cooldown dictating when the player is allowed to mantle again. Add the Wait commands to get the total cooldown. "
+		Event Player.IsMantling = False;
+	}
+}
+
+rule("Ultimate Mantle Blacklist  (By WetHarmonica#11357)")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Using Ultimate(Event Player) == True;
+		"These heroes are permitted to mantle during their ultimates. "
+		Array Contains(Array(Hero(Ana), Hero(Ashe), Hero(Baptiste), Hero(Brigitte), Hero(Lúcio), Hero(Soldier: 76), Hero(Symmetra), Hero(
+			Torbjörn), Hero(Widowmaker), Hero(Winston)), Hero Of(Event Player)) != True;
+	}
+
+	actions
+	{
+		Event Player.MantleBlacklist = True;
+		Wait(0.250, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.MantleBlacklist = False;
+	}
+}
+
+rule("Resist Knockbacks when Crouching  (By WetHarmonica#11357)")
+{
+	event
+	{
+		Player Received Knockback;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Crouching(Event Player) == True;
+		Event Player.IsFortified != True;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Down, 5, To World, Incorporate Contrary Motion);
 	}
 }
 
@@ -2521,252 +2587,692 @@ rule("[Zenyatta] Clear Mind")
 	}
 }
 
-disabled rule("Rule 94")
+rule("[D.va] retains momentum from Boosters")
 {
 	event
 	{
-		Ongoing - Global;
+		Ongoing - Each Player;
+		All;
+		All;
 	}
-}
 
-rule("[SUB] InfoHUDHandler")
-{
-	event
+	conditions
 	{
-		Subroutine;
-		InfoHUDHandler;
+		(Hero Of(Event Player) == Hero(D.Va) || Hero Being Duplicated(Event Player) == Hero(D.Va)) == True;
+		Is Using Ability 1(Event Player) == True;
 	}
 
 	actions
 	{
-		"PLACEHOLDERS"
-		disabled Else If(Hero Of(Event Player) == Hero(Ana));
-		"Name of Thing"
-		disabled Create HUD Text(Event Player, Custom String("{0} : Name", Ability Icon String(Hero(Ana), Button(Ultimate))), Null, Null, Left, 1,
-			Sky Blue, White, White, Visible To and String, Default Visibility);
-		disabled Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-		disabled Create HUD Text(Event Player, Null, Null, Custom String("Description"), Left, 2, White, White, White, Visible To and String,
-			Default Visibility);
-		disabled Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-		disabled Event Player.InfoHUDText[0] = 8;
-		Wait(0.016, Ignore Condition);
-		Create HUD Text(Event Player, Custom String("{0} : Info", Hero Icon String(Hero Of(Event Player))), Null, Null, Left, 0.100, White,
-			White, White, Visible To and String, Default Visibility);
-		Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-		"HEROES, ANA"
-		If(Hero Of(Event Player) == Hero(Ana));
-			"Bio Grenade"
-			Create HUD Text(Event Player, Custom String("{0}: Presumed Dead", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null,
-				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Gives many more escape tools:"), Left, 2, White, White, White,
-				Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-				Ability Icon String(Hero(Ana), Button(Ability 2))), Left, 3, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-				Button(Ability 1))), Left, 4, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Left, 5, White,
-				White, Red, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Ultimate"
-			Create HUD Text(Event Player, Custom String("{0} : Nano Volley", Ability Icon String(Hero(Ana), Button(Ultimate))), Null, Null,
-				Left, 6, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Throws a volley of {2} at high speeds!", Null, Null, Ability Icon String(
-				Hero(Ana), Button(Ability 2))), Left, 7, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 7;
-		"Ashe"
-		Else If(Hero Of(Event Player) == Hero(Ashe));
-			"Coach Gun"
-			Create HUD Text(Event Player, Custom String("{0} : Double Cross", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null,
-				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("You can use {0} twice!", Ability Icon String(Hero(Ashe), Button(
-				Ability 1))), Left, 2, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Cooldown starts automatically if second shot is not used"), Left, 3,
-				White, White, Red, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 3;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Baptiste));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Window Of Opportunity...", Ability Icon String(Hero(Baptiste), Button(
-				Secondary Fire))), Null, Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Provides Baptiste with a matrix that triples his healing recieved"), Left,
-				2, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Cooldown is shared with {0}", Ability Icon String(Hero(Baptiste), Button(
-				Ability 2))), Left, 3, White, White, Red, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 3;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Bastion));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Reconfigure", Ability Icon String(Hero(Bastion), Button(Ability 1))), Null,
-				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("{0} has limited ammo that regenerates outside of {0} form",
-				Ability Icon String(Hero(Bastion), Button(Primary Fire))), Left, 2, White, White, White, Visible To and String,
-				Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("You can only {0} after a set time based on how much ammo was used",
-				Ability Icon String(Hero(Bastion), Button(Ability 1))), Left, 4, White, White, Red, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Null Wrecker", Ability Icon String(Hero(Bastion), Button(Ultimate))), Null,
-				Null, Left, 5, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Bastion's shots are super powerful"), Left, 6, White, White, White,
-				Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("You can no longer move in this form, and it is much shorter"), Left, 7,
-				White, White, Red, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 7;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Brigitte));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Proven Mettle", Ability Icon String(Hero(Brigitte), Button(Ability 2))), Null,
-				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Provides a speed buff when used"), Left, 2, White, White, White,
-				Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Length of buff changes depending on charge"), Left, 3, White, White,
-				White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Using 3 charges provides temporary armor"), Left, 4, White, White, White,
-				Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 4;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(McCree));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0}: Draw", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null, Left, 1,
-				Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Critical hits lowers your {0} cooldown slightly", Ability Icon String(
-				Hero(McCree), Button(Ability 1))), Left, 2, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Getting a kill resets your {0} cooldown", Ability Icon String(Hero(
-				McCree), Button(Ability 1))), Left, 3, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0}: Fan the Hammer", Ability Icon String(Hero(McCree), Button(Secondary Fire))),
-				Null, Null, Left, 4, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Saves the rest of your bullets on elimination", Ability Icon String(Hero(
-				McCree), Button(Ability 1))), Left, 5, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 5;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Lúcio));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Damage Boost Song", Ability Icon String(Hero(Lúcio), Button(Ability 1))), Null,
-				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Heal song has been replaced with Damage Boost song"), Left, 2, White,
-				White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Subwoofer Blowout", Ability Icon String(Hero(Lúcio), Button(Ultimate))), Null,
-				Null, Left, 3, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Landing knocks all enemies within your song radius upwards"), Left, 4,
-				White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 4;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Mei));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Chilled", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null, Left, 1,
-				Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Enemies damaged by Mei deal less damage for a short time"), Left, 2,
-				White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Ice Wall", Ability Icon String(Hero(Mei), Button(Ability 2))), Null, Null, Left,
-				3, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String(
-				"Note: There is a visual bug with Mei's HP while placing {0}. Actual damage taken is not changed.", Ability Icon String(Hero(
-				Mei), Button(Ability 2))), Left, 4, White, White, Orange, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 4;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Pharah));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Guardian's Haste", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null,
-				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Pressing Crouch while using {0} blasts you forwards", Ability Icon String(
-				Hero(Pharah), Button(Ability 1))), Left, 2, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Halves your cooldown", Ability Icon String(Hero(Pharah), Button(
-				Ability 1))), Left, 3, White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 3;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Zarya));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Particle Flux", Ability Icon String(Hero(Zarya), Button(Ability 2))), Null,
-				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Converts Zarya's shields into ammo (2:1 ratio)"), Left, 2, White, White,
-				White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Ammo above Max Ammo goes away after a visible timer"), Left, 3, White,
-				White, Red, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Cooldown starts after Ammo returns to under Max Ammo"), Left, 4, White,
-				White, Red, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 4;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Soldier: 76));
-			"Soldier's Resolve"
-			Create HUD Text(Event Player, Custom String("{0} : Soldier's Resolve", Ability Icon String(Hero(Genji), Button(Jump))), Null, Null,
-				Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Your health will slowly regenerate over time"), Left, 2, White, White,
-				White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			"Clean Sweep"
-			Create HUD Text(Event Player, Custom String("{0} : Clean Sweep", Ability Icon String(Hero(Soldier: 76), Button(Ability 2))), Null,
-				Null, Left, 3, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Place a beacon that shows the last damaged enemy's location"), Left, 4,
-				White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 4;
-		"PLACEHOLDERS"
-		Else If(Hero Of(Event Player) == Hero(Zenyatta));
-			"Name of Thing"
-			Create HUD Text(Event Player, Custom String("{0} : Recenter", Ability Icon String(Hero(Zenyatta), Button(Primary Fire))), Null,
-				Null, Left, 1, Sky Blue, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Create HUD Text(Event Player, Null, Null, Custom String("Zenyatta heals slightly when completing a reload animation"), Left, 2,
-				White, White, White, Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 2;
-		"ENDING"
-		Else;
-			"Missing Info"
-			Create HUD Text(Event Player, Custom String("{0} Info Missing {0}", Icon String(X)), Null, Null, Left, 1, Red, White, White,
-				Visible To and String, Default Visibility);
-			Modify Player Variable(Event Player, InfoHUDText, Append To Array, Last Text ID);
-			Event Player.InfoHUDText[0] = 1;
+		Wait(0.010, Abort When False);
+		Loop If Condition Is True;
+		Apply Impulse(Event Player, Facing Direction Of(Event Player) * 1, 5, To World, Incorporate Contrary Motion);
 	}
 }
 
-rule("Spawn Tutorial GUI Prompt")
+rule("[D.va] Eject Button")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Is Button Held(Event Player, Crouch) == True;
+		disabled Max Health(Event Player) >= 600;
+		disabled Has Status(Event Player, Hacked) == False;
+		Is In Alternate Form(Event Player) != True;
+	}
+
+	actions
+	{
+		Kill(Event Player, Null);
+		Event Player.DVaMekaHealth = Health(Event Player);
+		Wait(1, Ignore Condition);
+		Set Ultimate Charge(Event Player, Event Player.DVaMekaHealth / 12);
+		Clear Status(Event Player, Hacked);
+	}
+}
+
+rule("[Doomfist] Hand Cannon Stopping Power")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Doomfist) || Hero Being Duplicated(Event Player) == Hero(Doomfist)) == True;
+		Event Ability == Button(Primary Fire);
+		Victim.IsFortified == False;
+	}
+
+	actions
+	{
+		If(Hero Of(Victim) == Hero(Reinhardt));
+			Apply Impulse(Victim, Vector Towards(Attacker, Victim), Event Damage / 20, To World, Incorporate Contrary Motion);
+		Else;
+			Apply Impulse(Victim, Vector Towards(Attacker, Victim), Event Damage / 10, To World, Incorporate Contrary Motion);
+	}
+}
+
+rule("[Doomfist] Hand Cannon Recoil")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Doomfist) || Hero Being Duplicated(Event Player) == Hero(Doomfist)) == True;
+		Is Firing Primary(Event Player) == True;
+		Is Crouching(Event Player) != True;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Facing Direction Of(Event Player) * -1, 2, To World, Incorporate Contrary Motion);
+	}
+}
+
+rule("[Doomfist] Detects when Player is hit by Rocket Punch")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Attacker) == Hero(Doomfist) || Hero Being Duplicated(Attacker) == Hero(Doomfist)) == True;
+		disabled Horizontal Speed Of(Attacker) > Absolute Value(25);
+		disabled Has Status(Event Player, Stunned) == True;
+		Event Ability == Button(Secondary Fire);
+	}
+
+	actions
+	{
+		Event Player.RecordedPosition = Position Of(Event Player);
+	}
+}
+
+rule("[Doomfist] Mid-Punch Damage Resistance Loop")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Event Ability == Button(Secondary Fire);
+		Has Status(Event Player, Stunned) == True;
+		Event Player.RecordedPosition != Null;
+	}
+
+	actions
+	{
+		Wait(0.016, Abort When False);
+		Event Player.ModificationValue = 1 + Distance Between(Position Of(Event Player), Event Player.RecordedPosition) / 5;
+		disabled Event Player.ModificationValue = Distance Between(Position Of(Event Player), Event Player.RecordedPosition);
+		disabled Event Player.ModificationValue = Event Player.ModificationValue / 5;
+		disabled Event Player.ModificationValue = 1 + Event Player.ModificationValue;
+		Set Damage Received(Event Player, 100 / Event Player.ModificationValue);
+		Loop If Condition Is True;
+		Event Player.RecordedPosition = Null;
+		Set Damage Received(Event Player, 100);
+	}
+}
+
+rule("[Doomfist] Rising Uppercut Disabled after use.")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Doomfist) || Hero Being Duplicated(Event Player) == Hero(Doomfist)) == True;
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.200, Ignore Condition);
+		Set Ability 1 Enabled(Event Player, False);
+		Event Player.FlagGeneric = True;
+	}
+}
+
+rule("[Doomfist] Rising Uppercut Enable on landing")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Doomfist) || Hero Being Duplicated(Event Player) == Hero(Doomfist)) == True;
+		Is On Ground(Event Player) == True;
+		Is Using Ability 1(Event Player) == False;
+		Event Player.FlagGeneric == True;
+	}
+
+	actions
+	{
+		Event Player.FlagGeneric = False;
+		Set Ability Cooldown(Event Player, Button(Ability 1), 0.750);
+		Set Ability 1 Enabled(Event Player, True);
+		disabled Wait(0.500, Ignore Condition);
+		"If Uppercut was used during the wait, this prevents Uppercut from being re-enabled until the next instance of the ground being touched."
+		disabled Abort If(Event Player.FlagGeneric == True);
+	}
+}
+
+rule("[Doomfist] Best Defense Disabled on Abilities")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Doomfist) || Hero Being Duplicated(Event Player) == Hero(Doomfist)) == True;
+		(Is Using Ability 1(Event Player) || Is Using Ability 2(Event Player) || Is Firing Secondary(Event Player)) == True;
+		Max Health(Event Player) > 250;
+	}
+
+	actions
+	{
+		Damage(Attacker, Null, 30);
+	}
+}
+
+rule("[Doomfist] Rocket Punch Track")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Doomfist) || Hero Being Duplicated(Event Player) == Hero(Doomfist)) == True;
+		Is Firing Secondary(Event Player) == True;
+	}
+
+	actions
+	{
+		Event Player.MantleBlacklist = True;
+		Wait(0.200, Ignore Condition);
+		Loop If Condition Is True;
+		Event Player.MantleBlacklist = False;
+	}
+}
+
+rule("[Lucio] Soundwave Self-Blast")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Lúcio) || Hero Being Duplicated(Event Player) == Hero(Lúcio)) == True;
+		Is Firing Secondary(Event Player) == True;
+	}
+
+	actions
+	{
+		If(Is Crouching(Event Player) == True);
+			Apply Impulse(Event Player, Facing Direction Of(Event Player) * -1, 5, To World, Incorporate Contrary Motion);
+		Else;
+			Apply Impulse(Event Player, Facing Direction Of(Event Player) * -1, 10, To World, Incorporate Contrary Motion);
+	}
+}
+
+rule("[McCree] Fan the Hammer Overhaul")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(McCree) || Hero Being Duplicated(Event Player) == Hero(McCree)) == True;
+		Is Firing Secondary(Event Player) == True;
+		Is Button Held(Event Player, Secondary Fire) == False;
+	}
+
+	actions
+	{
+		Set Primary Fire Enabled(Event Player, False);
+		disabled Apply Impulse(Event Player, Facing Direction Of(Event Player) * -1, 1, To World, Incorporate Contrary Motion);
+		disabled Wait(0.040, Ignore Condition);
+		Cancel Primary Action(Event Player);
+		Set Secondary Fire Enabled(Event Player, False);
+		Wait(0.100, Ignore Condition);
+		Set Secondary Fire Enabled(Event Player, True);
+		Wait(0.300, Ignore Condition);
+		Set Primary Fire Enabled(Event Player, True);
+		If(Is Button Held(Event Player, Primary Fire) == True);
+			Press Button(Event Player, Primary Fire);
+	}
+}
+
+rule("[McCree] Primary Fire Delay and Recoil")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(McCree) || Hero Being Duplicated(Event Player) == Hero(McCree)) == True;
+		Is Firing Primary(Event Player) == True;
+	}
+
+	actions
+	{
+		"Band-Aid fix to any situations where secondary fire fails to re-enable."
+		disabled Set Secondary Fire Enabled(Event Player, True);
+		Skip If(Is Crouching(Event Player) == True, 1);
+		Apply Impulse(Event Player, Facing Direction Of(Event Player) * -1, 1.500, To World, Incorporate Contrary Motion);
+		Set Primary Fire Enabled(Event Player, False);
+		Wait(0.420, Ignore Condition);
+		Set Primary Fire Enabled(Event Player, True);
+		Wait(0.020, Ignore Condition);
+		Skip If(!Is Button Held(Event Player, Primary Fire), 1);
+		Press Button(Event Player, Primary Fire);
+	}
+}
+
+rule("[McCree] Secondary Recoil")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(McCree) || Hero Being Duplicated(Event Player) == Hero(McCree)) == True;
+		Is Firing Secondary(Event Player) == True;
+		Is Crouching(Event Player) != True;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Facing Direction Of(Event Player) * -1, 1.500, To World, Incorporate Contrary Motion);
+		Wait(0.100, Restart When True);
+	}
+}
+
+rule("[McCree] Combat Roll Boost")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(McCree) || Hero Being Duplicated(Event Player) == Hero(McCree)) == True;
+		Is Using Ability 1(Event Player) == True;
+		Throttle Of(Event Player) != Vector(0, 0, 0);
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Throttle Of(Event Player), 5, To Player, Incorporate Contrary Motion);
+	}
+}
+
+rule("[Moira] Ultimate Speed Penalty")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Moira) || Hero Being Duplicated(Event Player) == Hero(Moira)) == True;
+		Is Using Ultimate(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 75);
+		Wait(0.500, Ignore Condition);
+		Loop If Condition Is True;
+		Set Move Speed(Event Player, 100);
+	}
+}
+
+rule("[Moira] Ultimate Cancel with Melee")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Moira) || Hero Being Duplicated(Event Player) == Hero(Moira)) == True;
+		Is Using Ultimate(Event Player) == True;
+		Is Button Held(Event Player, Melee) == True;
+	}
+
+	actions
+	{
+		Cancel Primary Action(Event Player);
+	}
+}
+
+rule("[Reinhardt] Charge Cancellable with Quick Melee")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Reinhardt) || Hero Being Duplicated(Event Player) == Hero(Reinhardt)) == True;
+		Is Using Ability 1(Event Player) == True;
+		Is Button Held(Event Player, Melee) == True;
+	}
+
+	actions
+	{
+		disabled Disallow Button(Event Player, Primary Fire);
+		Cancel Primary Action(Event Player);
+		disabled Wait(0.250, Ignore Condition);
+		disabled Allow Button(Event Player, Primary Fire);
+	}
+}
+
+rule("[Reinhardt] Charge Momentum")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Reinhardt) || Hero Being Duplicated(Event Player) == Hero(Reinhardt)) == True;
+		Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.050, Ignore Condition);
+		Loop If Condition Is True;
+		Apply Impulse(Event Player, Forward, 10, To Player, Incorporate Contrary Motion);
+	}
+}
+
+rule("[Reinhardt] Jump While Charging")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Reinhardt) || Hero Being Duplicated(Event Player) == Hero(Reinhardt)) == True;
+		Is Using Ability 1(Event Player) == True;
+		Is Button Held(Event Player, Jump) == True;
+		Is On Ground(Event Player) == True;
+	}
+
+	actions
+	{
+		Apply Impulse(Event Player, Up, 5, To World, Incorporate Contrary Motion);
+	}
+}
+
+rule("[Reinhardt] Firestrike Effects")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Attacker) == Hero(Reinhardt) || Hero Being Duplicated(Attacker) == Hero(Reinhardt)) == True;
+		Event Ability == Button(Ability 2);
+		Victim.IsFortified == False;
+	}
+
+	actions
+	{
+		Set Status(Event Player, Attacker, Burning, 0.500);
+		If(Is Crouching(Victim) || Hero Of(Victim) == Hero(Reinhardt));
+			Apply Impulse(Victim, Vector Towards(Attacker, Victim), Event Damage / 20, To World, Incorporate Contrary Motion);
+		Else;
+			Apply Impulse(Victim, Vector Towards(Attacker, Victim), Event Damage / 10, To World, Incorporate Contrary Motion);
+	}
+}
+
+rule("[Reinhardt] 's highest position during ultimate activation is recorded.")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Reinhardt) || Hero Being Duplicated(Event Player) == Hero(Reinhardt)) == True;
+		Is Button Held(Event Player, Ultimate) == True;
+		Ultimate Charge Percent(Event Player) == 0;
+		Is In Air(Event Player) == True;
+		(Has Status(Event Player, Stunned) || Has Status(Event Player, Frozen) || Has Status(Event Player, Asleep) || Has Status(
+			Event Player, Knocked Down) || Has Status(Event Player, Hacked)) == False;
+	}
+
+	actions
+	{
+		Skip If(Event Player.RecordedPosition != Null, 1);
+		Event Player.RecordedPosition = Position Of(Event Player);
+		If(Y Component Of(Position Of(Event Player)) > Y Component Of(Event Player.RecordedPosition));
+			Event Player.RecordedPosition = Position Of(Event Player);
+		End;
+		Wait(0.250, Ignore Condition);
+		Loop If(Is Using Ultimate(Event Player) == False && Ultimate Charge Percent(Event Player) == 0);
+		Wait(1, Ignore Condition);
+		Event Player.RecordedPosition = Null;
+	}
+}
+
+rule("[Reinhardt]  Grand Slam Earthshatter")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Attacker) == Hero(Reinhardt) || Hero Being Duplicated(Attacker) == Hero(Reinhardt)) == True;
+		Event Ability == Button(Ultimate);
+		Attacker.RecordedPosition != Null;
+	}
+
+	actions
+	{
+		If(Y Component Of(Event Player.RecordedPosition) - Y Component Of(Position Of(Event Player)) <= 20);
+			Set Status(Victim, Attacker, Knocked Down, 2.500 + (Y Component Of(Event Player.RecordedPosition) - Y Component Of(Position Of(
+				Event Player))) * 0.200);
+		Else If(Y Component Of(Event Player.RecordedPosition) - Y Component Of(Position Of(Event Player)) >= 20);
+			Set Status(Victim, Attacker, Knocked Down, 6.500);
+	}
+}
+
+rule("[WreckingBall] Piledrive Spikes")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Vertical Speed Of(Event Player) <= -30;
+		Distance Between(Event Player, Closest Player To(Event Player, Opposite Team Of(Team Of(Event Player)))) <= 3;
+		(Hero Of(Event Player) == Hero(Wrecking Ball) || Hero Being Duplicated(Event Player) == Hero(Wrecking Ball)) == True;
+	}
+
+	actions
+	{
+		Damage(Players Within Radius(Event Player, 3, Opposite Team Of(Team Of(Event Player)), Surfaces), Event Player, 30);
+		Apply Impulse(Players Within Radius(Event Player, 3, Opposite Team Of(Team Of(Event Player)), Off), Down, 50, To World,
+			Cancel Contrary Motion);
+		Set Status(Players Within Radius(Event Player, 3, Opposite Team Of(Team Of(Event Player)), Surfaces), Event Player, Knocked Down,
+			0.500);
+	}
+}
+
+rule("[Zenyatta] Floats")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Zenyatta) || Hero Being Duplicated(Event Player) == Hero(Zenyatta)) == True;
+		Is Button Held(Event Player, Jump) == True;
+		(Has Status(Event Player, Stunned) || Has Status(Event Player, Frozen) || Has Status(Event Player, Asleep) || Has Status(
+			Event Player, Knocked Down) || Has Status(Event Player, Hacked) || Has Status(Event Player, Rooted)) == False;
+	}
+
+	actions
+	{
+		Set Gravity(Event Player, 50);
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+		Set Gravity(Event Player, 100);
+	}
+}
+
+rule("[Zenyatta] Falls Faster with Crouch")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Zenyatta) || Hero Being Duplicated(Event Player) == Hero(Zenyatta)) == True;
+		Is Button Held(Event Player, Crouch) == True;
+		Is In Air(Event Player) == True;
+		(Has Status(Event Player, Stunned) || Has Status(Event Player, Frozen) || Has Status(Event Player, Asleep) || Has Status(
+			Event Player, Knocked Down) || Has Status(Event Player, Hacked) || Has Status(Event Player, Rooted)) == False;
+	}
+
+	actions
+	{
+		Set Gravity(Event Player, 175);
+		Wait(0.100, Ignore Condition);
+		Loop If Condition Is True;
+		Set Gravity(Event Player, 100);
+	}
+}
+
+rule("[Zenyatta] Stopping Power")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Orisa) || Hero Being Duplicated(Event Player) == Hero(Orisa)) == True;
+		Event Ability != Button(Melee);
+		Victim.IsFortified == False;
+	}
+
+	actions
+	{
+		If(Is Crouching(Victim) || Hero Of(Victim) == Hero(Reinhardt));
+			Apply Impulse(Victim, Vector Towards(Attacker, Victim), Event Damage / 30, To World, Incorporate Contrary Motion);
+		Else;
+			Apply Impulse(Victim, Vector Towards(Attacker, Victim), Event Damage / 15, To World, Incorporate Contrary Motion);
+	}
+}
+
+rule("Tutorial: Initial Prompt")
 {
 	event
 	{
@@ -2784,13 +3290,16 @@ rule("Spawn Tutorial GUI Prompt")
 
 	actions
 	{
+		Enable Kill Feed(Event Player);
+		Enable Game Mode HUD(Event Player);
+		Destroy HUD Text(Event Player.PlayerInfoPrompt);
 		Create HUD Text(Event Player, Null, Null, Custom String("Hold \"Interact\" to view gamemode and hero changes"), Top, -1, Green,
 			Blue, Orange, Visible To, Default Visibility);
-		Event Player.PlayerGUIPrompt = Last Text ID;
-		For Player Variable(Event Player, LocalForLoopCounter, 0, Count Of(Event Player.PlayerGUIArray), 1);
-			Destroy HUD Text(Event Player.PlayerGUIArray[Event Player.LocalForLoopCounter]);
+		Event Player.PlayerInfoPrompt = Last Text ID;
+		For Player Variable(Event Player, LocalForLoopCounter, 0, Count Of(Event Player.PlayerInfoArray), 1);
+			Destroy HUD Text(Event Player.PlayerInfoArray[Event Player.LocalForLoopCounter]);
 		End;
-		Event Player.PlayerGUIArray = Empty Array;
+		Event Player.PlayerInfoArray = Empty Array;
 	}
 }
 
@@ -2811,13 +3320,12 @@ rule("Tutorial: All Modes")
 
 	actions
 	{
-		Destroy HUD Text(Event Player.PlayerGUIPrompt);
-		Create HUD Text(Event Player, Null, Null, Custom String("50% of current Ultimate Charge is preserved upon swapping heroes."), Left,
-			0, White, White, Orange, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[0] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("Cancel Emotes with Jump"), Left, 1, White, White, Sky Blue, Visible To,
-			Default Visibility);
-		Event Player.PlayerGUIArray[1] = Last Text ID;
+		Disable Kill Feed(Event Player);
+		Disable Game Mode HUD(Event Player);
+		Destroy HUD Text(Event Player.PlayerInfoPrompt);
+		Create HUD Text(Event Player, Null, Null, Custom String("Ult charge is reset upon death"), Left, 1, White, White, Orange,
+			Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[0] = Last Text ID;
 	}
 }
 
@@ -2841,7 +3349,30 @@ rule("Tutorial: Crouch")
 	{
 		Create HUD Text(Event Player, Null, Null, Custom String("Knockback is resisted while Crouching."), Left, 2, White, White,
 			Lime Green, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[3] = Last Text ID;
+		Event Player.PlayerInfoArray[2] = Last Text ID;
+	}
+}
+
+rule("Tutorial: Hero Name/Icon")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Event Player, Custom String("{0}{1}", Hero Icon String(Hero Of(Event Player)), Hero Of(Event Player)), Null, Null,
+			Right, 4, Sky Blue, White, Yellow, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[3] = Last Text ID;
 	}
 }
 
@@ -2862,21 +3393,18 @@ rule("Tutorial: Ana")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
 			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
+		Event Player.PlayerInfoArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
 			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
+		Event Player.PlayerInfoArray[5] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
 			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
+		Event Player.PlayerInfoArray[6] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
 			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Event Player.PlayerInfoArray[7] = Last Text ID;
 	}
 }
 
@@ -2897,21 +3425,15 @@ rule("Tutorial: Ashe")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
 			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("You can use {0} twice!", Ability Icon String(Hero(Ashe), Button(
+			Ability 1))), Right, 6, White, White, White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Cooldown starts automatically if second shot is not used"), Right, 7,
+			White, White, Red, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
 	}
 }
 
@@ -2932,21 +3454,17 @@ rule("Tutorial: Baptiste")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
 			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Custom String("{0} : Window Of Opportunity...", Ability Icon String(Hero(Baptiste), Button(
+			Secondary Fire))), Null, Null, Right, 6, Sky Blue, White, White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0} provides a matrix that triples your healing recieved, but shares a cooldown with {1}", Ability Icon String(Hero(Baptiste),
+			Button(Secondary Fire)), Ability Icon String(Hero(Baptiste), Button(Ability 2))), Right, 7, White, White, White,
+			Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
 	}
 }
 
@@ -2967,21 +3485,14 @@ rule("Tutorial: Bastion")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
-			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("{0} has limited ammo that regenerates outside of {0} form",
+			Ability Icon String(Hero(Bastion), Button(Primary Fire))), Right, 6, White, White, White, Visible To and String,
+			Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("You can only {0} after a set time based on how much ammo was used",
+			Ability Icon String(Hero(Bastion), Button(Ability 1))), Right, 7, White, White, Red, Visible To and String,
+			Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
 	}
 }
 
@@ -3002,56 +3513,15 @@ rule("Tutorial: Brigitte")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
-			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
-	}
-}
-
-rule("Tutorial: McCree")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		Ana;
-	}
-
-	conditions
-	{
-		Is Button Held(Event Player, Interact) == True;
-		Is Alive(Event Player) == True;
-	}
-
-	actions
-	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
-			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Provides a speed buff when used"), Right, 5, White, White, White,
+			Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Length of buff changes depending on charge"), Right, 6, White, White,
+			White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Using 3 charges provides temporary armor"), Right, 7, White, White, White,
+			Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
 	}
 }
 
@@ -3061,7 +3531,7 @@ rule("Tutorial: Lucio")
 	{
 		Ongoing - Each Player;
 		All;
-		Ana;
+		Lúcio;
 	}
 
 	conditions
@@ -3072,21 +3542,12 @@ rule("Tutorial: Lucio")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
-			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Heal song has been replaced with Damage Boost song"), Right, 5, White,
+			White, White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Landing knocks all enemies within your song radius upwards"), Right, 6,
+			White, White, White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
 	}
 }
 
@@ -3096,7 +3557,7 @@ rule("Tutorial: Mei")
 	{
 		Ongoing - Each Player;
 		All;
-		Ana;
+		Mei;
 	}
 
 	conditions
@@ -3107,21 +3568,9 @@ rule("Tutorial: Mei")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
 			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Event Player.PlayerInfoArray[4] = Last Text ID;
 	}
 }
 
@@ -3131,7 +3580,7 @@ rule("Tutorial: Pharah")
 	{
 		Ongoing - Each Player;
 		All;
-		Ana;
+		Pharah;
 	}
 
 	conditions
@@ -3142,21 +3591,12 @@ rule("Tutorial: Pharah")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
 			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Pressing Crouch while using {0} blasts you forwards", Ability Icon String(
+			Hero(Pharah), Button(Ability 1))), Right, 6, White, White, White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
 	}
 }
 
@@ -3166,7 +3606,7 @@ rule("Tutorial: Zarya")
 	{
 		Ongoing - Each Player;
 		All;
-		Ana;
+		Zarya;
 	}
 
 	conditions
@@ -3177,21 +3617,18 @@ rule("Tutorial: Zarya")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
 			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Converts Zarya's shields into ammo (2:1 ratio)"), Right, 6, White, White,
+			White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Ammo above Max Ammo goes away after a visible timer"), Right, 7, White,
 			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Event Player.PlayerInfoArray[6] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Cooldown starts after Ammo returns to under Max Ammo"), Right, 8, White,
+			White, Red, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[7] = Last Text ID;
 	}
 }
 
@@ -3201,7 +3638,7 @@ rule("Tutorial: Soldier:76")
 	{
 		Ongoing - Each Player;
 		All;
-		Ana;
+		Soldier: 76;
 	}
 
 	conditions
@@ -3212,21 +3649,145 @@ rule("Tutorial: Soldier:76")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
 			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Your health will slowly regenerate over time"), Right, 6, White, White,
+			White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Place a beacon that shows the last damaged enemy's location"), Right, 7,
+			White, White, White, Visible To and String, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
+	}
+}
+
+rule("Tutorial: D.Va")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		D.Va;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"D.Va can climb ledges when outside of MEKA. Face a ledge and hold Jump and Forward. "), Right, 5, Sky Blue, White, White,
+			Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Eject: Crouch+Interact to Eject from MEKA. Half of MEKA health is preserved as Call Mech charge (up to 50%).", Icon String(
+			Warning)), Right, 6, Sky Blue, White, Yellow, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+	}
+}
+
+rule("Tutorial: Doomfist")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Doomfist;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
+			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Rocket Punch wall damage drops off based on distance travelled by victim. (Punch + Wall Damage at 10 meters = 150 damage).",
+			Ability Icon String(Hero(Doomfist), Button(Secondary Fire))), Right, 6, Sky Blue, White, Turquoise, Visible To,
+			Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("{0}Rising Uppercut cooldown begins when touching the ground (0.75s).",
+			Ability Icon String(Hero(Doomfist), Button(Ability 1)), Ability Icon String(Hero(Doomfist), Button(Ability 2))), Right, 7,
+			Lime Green, White, Lime Green, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Best Defense no longer triggers on {0}Rising Uppercut",
+			Ability Icon String(Hero(Doomfist), Button(Ability 1)), Ability Icon String(Hero(Doomfist), Button(Ability 2))), Right, 8,
+			Sky Blue, White, Lime Green, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[7] = Last Text ID;
+	}
+}
+
+rule("Tutorial: McCree")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		McCree;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
+			Right, 4, Sky Blue, White, White, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Your shots have stopping power and recoil pusback. Slower fire rate on primary.", Ability Icon String(Hero(McCree), Button(
+			Primary Fire))), Right, 6, Sky Blue, White, Aqua, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("{0}Fan the Hammer is automatic and can be interrupted manually.",
+			Ability Icon String(Hero(McCree), Button(Secondary Fire))), Right, 7, Sky Blue, White, Aqua, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Combat Roll has extended potential distance. Press Crouch while rolling to 'Combat Duck'.", Ability Icon String(Hero(
+			McCree), Button(Ability 1))), Right, 8, Sky Blue, White, Lime Green, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[7] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Combat roll cooldown gets shortened by one second for each critical hit.", Ability Icon String(Hero(McCree), Button(
+			Ability 1))), Right, 9, Sky Blue, White, Lime Green, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[8] = Last Text ID;
+	}
+}
+
+rule("Tutorial: Reinhardt")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Reinhardt;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Event Player, Null, Null, Custom String("{0}Charge can be cancelled with Melee. Can Jump during Charge.",
+			Ability Icon String(Hero(Reinhardt), Button(Ability 1))), Right, 6, Sky Blue, White, Lime Green, Visible To,
+			Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Earthshatter Knockdown duration scales with max altitude during casting. ", Ability Icon String(Hero(Reinhardt), Button(
+			Ability 1))), Right, 7, Sky Blue, White, Purple, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
 	}
 }
 
@@ -3236,7 +3797,7 @@ rule("Tutorial: Zenyatta")
 	{
 		Ongoing - Each Player;
 		All;
-		Ana;
+		Zenyatta;
 	}
 
 	conditions
@@ -3247,20 +3808,12 @@ rule("Tutorial: Zenyatta")
 
 	actions
 	{
-		Create HUD Text(Event Player, Custom String("{0}Ana", Hero Icon String(Hero(Ana))), Null, Null, Right, 4, Sky Blue, White, Yellow,
-			Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[4] = Last Text ID;
 		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
 			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
-		Event Player.PlayerGUIArray[5] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} provides a large jump if thrown directly downwards while jumping",
-			Ability Icon String(Hero(Ana), Button(Ability 2))), Right, 6, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[6] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Gives you a speed boost on hit", Ability Icon String(Hero(Ana),
-			Button(Ability 1))), Right, 7, White, White, White, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[7] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("(Effects stop and cooldown starts after enemy wake up)"), Right, 8, White,
-			White, Red, Visible To and String, Default Visibility);
-		Event Player.PlayerGUIArray[8] = Last Text ID;
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Passive: Have decreased personal gravity while holding Jump. Increased gravity while holding Crouch.", Ability Icon String(
+			Hero(Zenyatta), Button(Ultimate))), Right, 6, Sky Blue, White, Yellow, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
 	}
 }

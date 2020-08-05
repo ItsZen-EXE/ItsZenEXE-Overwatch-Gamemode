@@ -1,107 +1,157 @@
-variables
-{
-	player:
-		1: IsUsingAbility
-		5: AbilityVariableChase_I
-}
 
-disabled rule("[Bastion] Turret Ammo Regen")
+rule("Tutorial: D.Va")
 {
 	event
 	{
 		Ongoing - Each Player;
 		All;
-		Bastion;
+		D.Va;
 	}
 
 	conditions
 	{
-		Event Player.IsUsingAbility[1] == False;
+		Is Button Held(Event Player, Interact) == True;
 		Is Alive(Event Player) == True;
 	}
 
 	actions
 	{
-		Chase Player Variable At Rate(Event Player, AbilityVariableChase_I, 100, 6.250, None);
-		While(Event Player.IsUsingAbility[1] == False);
-			Set Ability Resource(Event Player, Button(Secondary Fire), Event Player.AbilityVariableChase_I);
-			Set Ability Cooldown(Event Player, Button(Ability 1), Event Player.AbilityVariableChase_I);
-			Wait(0.016, Ignore Condition);
-		End;
-		Set Ability Resource(Event Player, Button(Secondary Fire), Event Player.AbilityVariableChase_I);
-		Set Ability Cooldown(Event Player, Button(Ability 1), Event Player.AbilityVariableChase_I);
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"D.Va can climb ledges when outside of MEKA. Face a ledge and hold Jump and Forward. "), Right, 5, Sky Blue, White, White,
+			Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Eject: Crouch+Interact to Eject from MEKA. Half of MEKA health is preserved as Call Mech charge (up to 50%).", Icon String(
+			Warning)), Right, 6, Sky Blue, White, Yellow, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
 	}
 }
 
-disabled rule("[Bastion] Turret Ability (Low Ammo Locks Abillity)")
+rule("Tutorial: Doomfist")
 {
 	event
 	{
 		Ongoing - Each Player;
 		All;
-		Bastion;
+		Doomfist;
 	}
 
 	conditions
 	{
-		Event Player.AbilityVariableChase_I != 100;
-		Event Player.IsUsingAbility[1] == False;
+		Is Button Held(Event Player, Interact) == True;
 		Is Alive(Event Player) == True;
 	}
 
 	actions
 	{
-		Disallow Button(Event Player, Ability 1);
-		Wait(0.016, Ignore Condition);
-		Set Ability 1 Enabled(Event Player, False);
+		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
+			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Rocket Punch wall damage drops off based on distance travelled by victim. (Punch + Wall Damage at 10 meters = 150 damage).",
+			Ability Icon String(Hero(Doomfist), Button(Secondary Fire))), Right, 6, Sky Blue, White, Turquoise, Visible To,
+			Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("{0}Rising Uppercut cooldown begins when touching the ground (0.75s).",
+			Ability Icon String(Hero(Doomfist), Button(Ability 1)), Ability Icon String(Hero(Doomfist), Button(Ability 2))), Right, 7,
+			Lime Green, White, Lime Green, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("Best Defense no longer triggers on {0}Rising Uppercut",
+			Ability Icon String(Hero(Doomfist), Button(Ability 1)), Ability Icon String(Hero(Doomfist), Button(Ability 2))), Right, 8,
+			Sky Blue, White, Lime Green, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[7] = Last Text ID;
 	}
 }
 
-disabled rule("[Bastion] Turret Ammo Usage")
+rule("Tutorial: McCree")
 {
 	event
 	{
 		Ongoing - Each Player;
 		All;
-		Bastion;
+		McCree;
 	}
 
 	conditions
 	{
-		Is Firing Primary(Event Player) == True;
-		Event Player.IsUsingAbility[1] == True;
+		Is Button Held(Event Player, Interact) == True;
 		Is Alive(Event Player) == True;
 	}
 
 	actions
 	{
-		Chase Player Variable At Rate(Event Player, AbilityVariableChase_I, 0, 20, None);
-		While(Is Firing Primary(Event Player) == True);
-			Set Ability Resource(Event Player, Button(Secondary Fire), Event Player.AbilityVariableChase_I);
-			Wait(0.016, Ignore Condition);
-		End;
-		Set Ability Resource(Event Player, Button(Secondary Fire), Event Player.AbilityVariableChase_I);
+		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
+			Right, 4, Sky Blue, White, White, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Your shots have stopping power and recoil pusback. Slower fire rate on primary.", Ability Icon String(Hero(McCree), Button(
+			Primary Fire))), Right, 6, Sky Blue, White, Aqua, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String("{0}Fan the Hammer is automatic and can be interrupted manually.",
+			Ability Icon String(Hero(McCree), Button(Secondary Fire))), Right, 7, Sky Blue, White, Aqua, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Combat Roll has extended potential distance. Press Crouch while rolling to 'Combat Duck'.", Ability Icon String(Hero(
+			McCree), Button(Ability 1))), Right, 8, Sky Blue, White, Lime Green, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[7] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Combat roll cooldown gets shortened by one second for each critical hit.", Ability Icon String(Hero(McCree), Button(
+			Ability 1))), Right, 9, Sky Blue, White, Lime Green, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[8] = Last Text ID;
 	}
 }
 
-disabled rule("[Bastion] Ammo Stop Using")
+rule("Tutorial: Reinhardt")
 {
 	event
 	{
 		Ongoing - Each Player;
 		All;
-		Bastion;
+		Reinhardt;
 	}
 
 	conditions
 	{
-		Is Firing Primary(Event Player) != True;
-		Event Player.IsUsingAbility[1] == True;
+		Is Button Held(Event Player, Interact) == True;
 		Is Alive(Event Player) == True;
 	}
 
 	actions
 	{
-		Stop Chasing Player Variable(Event Player, AbilityVariableChase_I);
+		Create HUD Text(Event Player, Null, Null, Custom String("{0}Charge can be cancelled with Melee. Can Jump during Charge.",
+			Ability Icon String(Hero(Reinhardt), Button(Ability 1))), Right, 6, Sky Blue, White, Lime Green, Visible To,
+			Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Earthshatter Knockdown duration scales with max altitude during casting. ", Ability Icon String(Hero(Reinhardt), Button(
+			Ability 1))), Right, 7, Sky Blue, White, Purple, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[6] = Last Text ID;
+	}
+}
+
+rule("Tutorial: Zenyatta")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Zenyatta;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Interact) == True;
+		Is Alive(Event Player) == True;
+	}
+
+	actions
+	{
+		Create HUD Text(Event Player, Null, Null, Custom String("This hero can climb ledges. Face a ledge and hold Jump and Forward. "),
+			Right, 5, Sky Blue, White, White, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[4] = Last Text ID;
+		Create HUD Text(Event Player, Null, Null, Custom String(
+			"{0}Passive: Have decreased personal gravity while holding Jump. Increased gravity while holding Crouch.", Ability Icon String(
+			Hero(Zenyatta), Button(Ultimate))), Right, 6, Sky Blue, White, Yellow, Visible To, Default Visibility);
+		Event Player.PlayerInfoArray[5] = Last Text ID;
 	}
 }
