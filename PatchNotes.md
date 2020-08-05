@@ -116,4 +116,4 @@ For this first official patch note that's being saved, I'm actually going to put
 
 
 
-# Will finish the rest of this tomorrow! It's 9 PM and I have been working on this forever so I need a break thank :)
+# This is outdated for now and will be updated fully at a later time. :)
