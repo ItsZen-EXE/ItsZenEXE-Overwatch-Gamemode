@@ -1,4 +1,36 @@
-actions
+rule("Orisa Reload Overhaul")
 {
-	Else If((Hero Of(Event Player) == Hero(Lúcio) || Hero Being Duplicated(Event Player) == Hero(Lúcio)) == True);
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		Orisa;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Orisa) || Hero Being Duplicated(Event Player) == Hero(Orisa)) == True;
+		Is Reloading(Event Player) == True;
+	}
+
+	actions
+	{
+		Skip If(Ammo(Event Player, 0) > 0, 4);
+		Set Primary Fire Enabled(Event Player, False);
+		Wait(0.016, Ignore Condition);
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 5);
+		Press Button(Event Player, Button(Reload));
+		Wait(0.550, Ignore Condition);
+		Set Primary Fire Enabled(Event Player, True);
+		While(Is Reloading(Event Player) == True);
+			If(Ammo(Event Player, 0) < Max Ammo(Event Player, 0));
+				Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 1);
+			End;
+			If(Is Button Held(Event Player, Button(Primary Fire)) == True);
+				Skip If(Ammo(Event Player, 0) < 10, 1);
+				Cancel Primary Action(Event Player);
+			End;
+			Wait(0.040, Abort When False);
+		End;
+	}
 }
