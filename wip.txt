@@ -8,6 +8,8 @@ settings
 	lobby
 	{
 		Match Voice Chat: Enabled
+		Max FFA Players: 7
+		Use Experimental Update If Available: Yes
 	}
 
 	modes
@@ -16,6 +18,7 @@ settings
 		{
 			enabled maps
 			{
+				Kanezaka
 				Workshop Island Night
 			}
 		}
@@ -32,9 +35,6 @@ settings
 	{
 		General
 		{
-			Ultimate Generation: 500%
-			Ultimate Generation - Passive: 500%
-
 			Ana
 			{
 				Healing Dealt: 50%
@@ -46,22 +46,12 @@ settings
 				Ammunition Clip Size Scalar: 80%
 				Coach Gun Knockback Scalar Enemy: 60%
 				Coach Gun Knockback Scalar Self: 90%
-				Ultimate Duration: 45%
+				Ultimate Duration: 35%
 			}
 
 			Baptiste
 			{
 				Damage Dealt: 80%
-			}
-
-			Bastion
-			{
-				Ammunition Clip Size Scalar: 71%
-				Configuration: Tank Weapon Knockback Scalar: 150%
-				Damage Dealt: 75%
-				Self-Repair Recharge Rate: 0%
-				Ultimate Duration: 50%
-				Ultimate Generation Configuration: Tank: 70%
 			}
 
 			Brigitte
@@ -87,16 +77,9 @@ settings
 				Health: 75%
 			}
 
-			Hanzo
-			{
-				Lunge Distance Scalar: 114%
-				Sonic Arrow Cooldown Time: 84%
-				Storm Arrows Cooldown Time: 80%
-				Storm Arrows Quantity: 3
-			}
-
 			Lúcio
 			{
+				Soundwave Cooldown Time: 125%
 				Soundwave Knockback Scalar: 90%
 				Ultimate Generation - Combat Sound Barrier: 135%
 			}
@@ -106,19 +89,10 @@ settings
 				Combat Roll Cooldown Time: 133%
 			}
 
-			Mei
-			{
-				Cryo-Freeze Cooldown Time: 91%
-				Damage Dealt: 86%
-				Healing Dealt: 170%
-				Health: 62%
-				Ice Wall Cooldown Time: 77%
-			}
-
 			Orisa
 			{
 				Ammunition Clip Size Scalar: 60%
-				Halt! Cooldown Time: 80%
+				Halt! Cooldown Time: 87%
 				Projectile Speed: 115%
 				Protective Barrier Cooldown Time: 80%
 			}
@@ -134,6 +108,13 @@ settings
 				Charge Cooldown Time: 80%
 				Rocket Hammer Knockback Scalar: 150%
 				Spawn With Ultimate Ready: On
+			}
+
+			Roadhog
+			{
+				Ammunition Clip Size Scalar: 80%
+				Take a Breather Cooldown Time: 125%
+				Whole Hog Knockback Scalar: 75%
 			}
 
 			Soldier: 76
@@ -153,27 +134,40 @@ settings
 			{
 				Bastion
 				Hanzo
+				Junkrat
 				Mei
 				Mercy
 				Moira
 				Reaper
-				Roadhog
 				Sigma
 				Symmetra
 				Torbjörn
 				Tracer
 				Widowmaker
 				Winston
+				Zenyatta
 			}
 		}
 	}
 
 	workshop
 	{
-		Debug Enabled: On
 		Disable Inspector: Off
 		Enable Host Cheats: On
 		Enable Short Cooldowns: On
+	}
+
+	extensions
+	{
+		Beam Effects
+		Beam Sounds
+		Buff Status Effects
+		Debuff Status Effects
+		Buff and Debuff Sounds
+		Energy Explosion Effects
+		Kinetic Explosion Effects
+		Explosion Sounds
+		Play More Effects
 	}
 }
 
@@ -190,22 +184,23 @@ variables
 		0: HudText
 		1: IsUsingAbility
 		2: AbilityVariables
-		3: AbilityEffects
-		4: AbilityVariableChase_I
-		5: AbilityVariableChase_II
-		6: IsStatsChanged
-		7: FastCooldownsToggle
-		8: LoopForCounter
-		9: PlayerInfoPrompt
-		10: PlayerInfoArray
-		11: RulerPointer
-		12: RulerMode
-		13: RulerState
-		14: RulerPos1
-		15: RulerPos2
-		16: RulerPos3
-		17: RulerAngle
-		18: IsFortified
+		3: AbilityVariableThruDeath
+		4: AbilityEffects
+		5: AbilityVariableChase_I
+		6: AbilityVariableChase_II
+		7: IsStatsChanged
+		8: FastCooldownsToggle
+		9: LoopForCounter
+		10: PlayerInfoPrompt
+		11: PlayerInfoArray
+		12: RulerPointer
+		13: RulerMode
+		14: RulerState
+		15: RulerPos1
+		16: RulerPos2
+		17: RulerPos3
+		18: RulerAngle
+		19: ThirdPerson
 }
 
 subroutines
@@ -214,6 +209,36 @@ subroutines
 	1: EffectHandler
 	2: HUDHandler
 	4: PerHeroStatChanges
+}
+
+rule("Toggle Third Person")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		Is Button Held(Event Player, Button(Reload)) == True;
+		Workshop Setting Toggle(Custom String("Third Person"), Custom String("Holding Reload Enables/Disables Third Person"), False, -1)
+			== True;
+	}
+
+	actions
+	{
+		Wait(2.250, Abort When False);
+		Event Player.ThirdPerson = !Event Player.ThirdPerson;
+		If(Event Player.ThirdPerson);
+			Start Camera(Event Player, Update Every Frame(Eye Position(Event Player) - Facing Direction Of(Event Player) * 3),
+				Update Every Frame(Eye Position(Event Player)), 0);
+			Small Message(Event Player, Custom String("Third Person Enabled (Hold reload to disable)"));
+		Else;
+			Stop Camera(Event Player);
+		End;
+	}
 }
 
 rule("========================[] Debug")
@@ -263,6 +288,119 @@ rule("[Toggleable Options and More] (most require debug scripts added)")
 		Global.HostCheatsEnabled = Workshop Setting Toggle(Custom String("DEBUG OPTIONS"), Custom String("Enable Host Cheats"), False, 2);
 		"Enable Ruler"
 		Global.RulerEnabled = Workshop Setting Toggle(Custom String("DEBUG OPTIONS"), Custom String("Enable Ruler"), False, 3);
+	}
+}
+
+rule("[Debug] Knockback/Damage bots position (B)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		disabled Global.DebugEnabled == True;
+	}
+
+	actions
+	{
+		Global.DmgTestBotSpawnerPos[0] = Vector(-15.957, 0, -15.981);
+		Create Effect(All Players(All Teams), Sphere, Color(Blue), Global.DmgTestBotSpawnerPos[0], 1, Visible To Position and Radius);
+		Create In-World Text(All Players(All Teams), Custom String("Spawn Damage Testing Heroes {0} {1}", Hero Icon String(Hero(McCree)),
+			Hero Icon String(Hero(Roadhog))), Global.DmgTestBotSpawnerPos[0] + Up, 1, Clip Against Surfaces,
+			Visible To Position and String, Color(Red), Visible Always);
+	}
+}
+
+rule("[Debug] Spawn Damage Bots")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		disabled Global.DebugEnabled == True;
+		Is True For Any(Global.DmgTestBotSpawnerPos, Distance Between(Host Player, Current Array Element) <= 1.200) == True;
+		Is Button Held(Host Player, Button(Interact)) == True;
+	}
+
+	actions
+	{
+		Stop Facing(All Players(All Teams));
+		Play Effect(All Players(All Teams), Buff Explosion Sound, Color(White), All Players(All Teams), 100);
+		Destroy All Dummy Bots;
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(Soldier: 76), All Teams, 1, Vector(-17.568, 2, -11.259), Null);
+		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Host Player + Vector(0,
+			0.400, 0)), 100, To World, Direction and Turn Rate);
+		Create Dummy Bot(Hero(Roadhog), All Teams, 2, Vector(-11.766, 2, -18.699), Null);
+		Start Facing(Players In Slot(2, All Teams), Direction Towards(Eye Position(Players In Slot(2, All Teams)), Host Player + Vector(0,
+			0.400, 0)), 100, To World, Direction and Turn Rate);
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(Reinhardt), All Teams, 3, Vector(-17.769, 2, -4.997), Null);
+		Start Facing(Players In Slot(3, All Teams), Direction Towards(Eye Position(Players In Slot(3, All Teams)), Host Player + Vector(0,
+			0.400, 0)), 100, To World, Direction and Turn Rate);
+		Create Dummy Bot(Hero(Genji), All Teams, 4, Vector(-4.003, 2, -17.763), Null);
+		Start Facing(Players In Slot(4, All Teams), Direction Towards(Eye Position(Players In Slot(4, All Teams)), Host Player + Vector(0,
+			0.400, 0)), 100, To World, Direction and Turn Rate);
+	}
+}
+
+rule("[Debug] Spawn Status/Ability Test Position (D)")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		disabled Global.DebugEnabled == True;
+	}
+
+	actions
+	{
+		Global.StatusTestBotSpawnerPos[0] = Vector(0, 0, 0);
+		Create Effect(All Players(All Teams), Ring, Color(Sky Blue), Global.StatusTestBotSpawnerPos[0], 1, Visible To Position and Radius);
+		Create In-World Text(All Players(All Teams), Custom String("Spawn Testing Bot"), Global.StatusTestBotSpawnerPos[0] + Up, 1,
+			Clip Against Surfaces, Visible To Position and String, Color(Red), Visible Always);
+	}
+}
+
+rule("[Debug] Spawn Status/Ability Test Bot")
+{
+	event
+	{
+		Ongoing - Global;
+	}
+
+	conditions
+	{
+		disabled Global.DebugEnabled == True;
+		Is True For Any(Global.StatusTestBotSpawnerPos, Distance Between(Host Player, Current Array Element) <= 1.200) == True;
+		Is Button Held(Host Player, Button(Interact)) == True;
+	}
+
+	actions
+	{
+		Stop Facing(All Players(All Teams));
+		Play Effect(All Players(All Teams), Buff Explosion Sound, Color(White), All Players(All Teams), 100);
+		Destroy All Dummy Bots;
+		Wait(0.250, Ignore Condition);
+		Create Dummy Bot(Hero(Widowmaker), All Teams, 1, Vector(17.043, 1.424, -0.038), Direction Towards(Eye Position(Players In Slot(1,
+			All Teams)), Vector(-95.785, 33.918, 73.376)));
+		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Eye Position(
+			Host Player)), 100, To World, Direction and Turn Rate);
+		Wait(2, Ignore Condition);
+		Set Ultimate Charge(All Players(All Teams), 100);
+		Start Holding Button(Players In Slot(1, All Teams), Button(Ultimate));
+		Create HUD Text(Host Player, Custom String("{0} / {1} HP", Health(Players In Slot(1, All Teams)), Max Health(Players In Slot(1,
+			All Teams))), Null, Null, Top, 50, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
 	}
 }
 
@@ -936,11 +1074,13 @@ rule("[Debug] HUD Per Player")
 	}
 }
 
-disabled rule("[Debug] HUD")
+rule("[Debug] HUD")
 {
 	event
 	{
-		Ongoing - Global;
+		Ongoing - Each Player;
+		All;
+		All;
 	}
 
 	conditions
@@ -953,118 +1093,9 @@ disabled rule("[Debug] HUD")
 		Create HUD Text(Host Player, Custom String("Peak: {0}", Server Load Peak), Custom String("Average: {0}", Server Load Average),
 			Custom String("Current: {0}", Server Load), Top, -30, Color(White), Color(White), Color(White), Visible To and String,
 			Default Visibility);
-	}
-}
-
-rule("[Debug] Knockback/Damage bots position (B)")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-
-	conditions
-	{
-		disabled Global.DebugEnabled == True;
-	}
-
-	actions
-	{
-		Global.DmgTestBotSpawnerPos[0] = Vector(-15.957, 0, -15.981);
-		Create Effect(All Players(All Teams), Sphere, Color(Blue), Global.DmgTestBotSpawnerPos[0], 1, Visible To Position and Radius);
-		Create In-World Text(All Players(All Teams), Custom String("Spawn Damage Testing Heroes {0} {1}", Hero Icon String(Hero(McCree)),
-			Hero Icon String(Hero(Roadhog))), Global.DmgTestBotSpawnerPos[0] + Up, 1, Clip Against Surfaces,
-			Visible To Position and String, Color(Red), Visible Always);
-	}
-}
-
-rule("[Debug] Spawn Damage Bots")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		disabled Global.DebugEnabled == True;
-		Is True For Any(Global.DmgTestBotSpawnerPos, Distance Between(Host Player, Current Array Element) <= 1.200) == True;
-		Is Button Held(Host Player, Button(Interact)) == True;
-	}
-
-	actions
-	{
-		Stop Facing(All Players(All Teams));
-		Play Effect(All Players(All Teams), Buff Explosion Sound, Color(White), All Players(All Teams), 100);
-		Destroy All Dummy Bots;
-		Wait(0.250, Ignore Condition);
-		Create Dummy Bot(Hero(Soldier: 76), All Teams, 1, Vector(-17.568, 2, -11.259), Null);
-		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Host Player + Vector(0,
-			0.400, 0)), 100, To World, Direction and Turn Rate);
-		Create Dummy Bot(Hero(Roadhog), All Teams, 2, Vector(-11.766, 2, -18.699), Null);
-		Start Facing(Players In Slot(2, All Teams), Direction Towards(Eye Position(Players In Slot(2, All Teams)), Host Player + Vector(0,
-			0.400, 0)), 100, To World, Direction and Turn Rate);
-		Wait(0.250, Ignore Condition);
-		Create Dummy Bot(Hero(Reinhardt), All Teams, 3, Vector(-17.769, 2, -4.997), Null);
-		Start Facing(Players In Slot(3, All Teams), Direction Towards(Eye Position(Players In Slot(3, All Teams)), Host Player + Vector(0,
-			0.400, 0)), 100, To World, Direction and Turn Rate);
-		Create Dummy Bot(Hero(Genji), All Teams, 4, Vector(-4.003, 2, -17.763), Null);
-		Start Facing(Players In Slot(4, All Teams), Direction Towards(Eye Position(Players In Slot(4, All Teams)), Host Player + Vector(0,
-			0.400, 0)), 100, To World, Direction and Turn Rate);
-	}
-}
-
-rule("[Debug] Spawn Status/Ability Test Position (D)")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-
-	conditions
-	{
-		disabled Global.DebugEnabled == True;
-	}
-
-	actions
-	{
-		Global.StatusTestBotSpawnerPos[0] = Vector(0, 0, 0);
-		Create Effect(All Players(All Teams), Ring, Color(Sky Blue), Global.StatusTestBotSpawnerPos[0], 1, Visible To Position and Radius);
-		Create In-World Text(All Players(All Teams), Custom String("Spawn Testing Bot"), Global.StatusTestBotSpawnerPos[0] + Up, 1,
-			Clip Against Surfaces, Visible To Position and String, Color(Red), Visible Always);
-	}
-}
-
-rule("[Debug] Spawn Status/Ability Test Bot")
-{
-	event
-	{
-		Ongoing - Global;
-	}
-
-	conditions
-	{
-		disabled Global.DebugEnabled == True;
-		Is True For Any(Global.StatusTestBotSpawnerPos, Distance Between(Host Player, Current Array Element) <= 1.200) == True;
-		Is Button Held(Host Player, Button(Interact)) == True;
-	}
-
-	actions
-	{
-		Stop Facing(All Players(All Teams));
-		Play Effect(All Players(All Teams), Buff Explosion Sound, Color(White), All Players(All Teams), 100);
-		Destroy All Dummy Bots;
-		Wait(0.250, Ignore Condition);
-		Create Dummy Bot(Hero(Orisa), All Teams, 1, Vector(17.043, 1.424, -0.038), Direction Towards(Eye Position(Players In Slot(1,
-			All Teams)), Vector(-95.785, 33.918, 73.376)));
-		Start Facing(Players In Slot(1, All Teams), Direction Towards(Eye Position(Players In Slot(1, All Teams)), Eye Position(
-			Host Player)), 100, To World, Direction and Turn Rate);
-		Wait(2, Ignore Condition);
-		Start Holding Button(Players In Slot(1, All Teams), Button(Ability 2));
-		Create HUD Text(Host Player, Custom String("{0} / {1} HP", Health(Players In Slot(1, All Teams)), Max Health(Players In Slot(1,
-			All Teams))), Null, Null, Top, 50, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+		Create HUD Text(All Players(All Teams), Custom String("Throttle:{0} Velocity: {1} Speed of in Dir: {2}", Throttle Of(Event Player),
+			Velocity Of(Event Player), Speed Of In Direction(Event Player, Vector(0, 0, 0))), Null, Null, Left, 0, Color(White), Color(
+			White), Color(White), Visible To and String, Default Visibility);
 	}
 }
 
@@ -1486,9 +1517,9 @@ rule("Tutorial: Soldier:76")
 		Create HUD Text(Event Player, Null, Null, Custom String("Your health will slowly regenerate over time"), Right, 6, Color(White),
 			Color(White), Color(Sky Blue), Visible To and String, Default Visibility);
 		Event Player.PlayerInfoArray[4] = Last Text ID;
-		Create HUD Text(Event Player, Null, Null, Custom String("{0} Place a beacon that shows the last damaged enemy's location",
-			Ability Icon String(Hero(Soldier: 76), Button(Ability 2))), Right, 7, Color(White), Color(White), Color(Yellow),
-			Visible To and String, Default Visibility);
+		Create HUD Text(Event Player, Null, Null, Custom String(" [{1}] {0} Place a beacon that shows the last damaged enemy's location",
+			Ability Icon String(Hero(Soldier: 76), Button(Ability 2)), Input Binding String(Button(Ability 2))), Right, 7, Color(White),
+			Color(White), Color(Yellow), Visible To and String, Default Visibility);
 		Event Player.PlayerInfoArray[5] = Last Text ID;
 	}
 }
@@ -1774,23 +1805,32 @@ rule("[SUB] EffectHandler")
 			Create Effect(Filtered Array(Filtered Array(Event Player, Is Alive(Event Player) == True), Is Using Ability 1(Event Player)
 				!= True), Ring, Color(Blue), Update Every Frame(Position Of(Event Player)), 12, Visible To Position and Radius);
 			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
-			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[2] == True), Light Shaft, Color(Green), Vector(
-				X Component Of(Position Of(Event Player)), Y Component Of(Position Of(Event Player)) - Altitude Of(Event Player),
-				Z Component Of(Position Of(Event Player))), 12, Visible To Position and Radius);
+			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[1] == False), Mercy Damage Boosted Effect, Color(
+				White), Event Player, 4, Visible To Position and Radius);
 			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
-			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[2] == True), Ring, Color(Green), Vector(
-				X Component Of(Position Of(Event Player)), Y Component Of(Position Of(Event Player)) - Altitude Of(Event Player),
-				Z Component Of(Position Of(Event Player))), 12, Visible To Position and Radius);
+			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[2] == True), Ring, Color(Green),
+				Update Every Frame(Vector(X Component Of(Position Of(Event Player)), Y Component Of(Position Of(Event Player)) - Altitude Of(
+				Event Player), Z Component Of(Position Of(Event Player)))), 12, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Create Effect(Filtered Array(Remove From Array(All Players(All Teams), Event Player), Event Player.IsUsingAbility[2] == True),
+				Wrecking Ball Piledriver Fire Effect, Color(Team 1), Update Every Frame(Position Of(Event Player)), 12,
+				Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Event Player.AbilityEffects[0] += 4;
+		Else If((Hero Of(Event Player) == Hero(Baptiste) || Hero Being Duplicated(Event Player) == Hero(Baptiste)) == True);
+			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[1] == True),
+				Baptiste Immortality Field Protected Effect, Color(White), Event Player, 75, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[1] == True),
+				Ana Biotic Grenade Increased Healing Effect, Color(White), Event Player, 200, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[1] == True),
+				Baptiste Immortality Field Protected Sound, Color(White), Event Player, 75, Visible To Position and Radius);
+			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
+			Create Effect(Filtered Array(Remove From Array(All Players(All Teams), Event Player), Event Player.IsUsingAbility[1] == True),
+				Heal Target Active Effect, Color(White), Event Player, 200, Visible To Position and Radius);
 			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
 			Event Player.AbilityEffects[0] += 3;
-		Else If((Hero Of(Event Player) == Hero(Baptiste) || Hero Being Duplicated(Event Player) == Hero(Baptiste)) == True);
-			Create Effect(Filtered Array(Players Within Radius(Event Player, 5, All Teams, Surfaces), Event Player.IsUsingAbility[1] == True),
-				Light Shaft, Color(Yellow), 0 + 0, 1, Visible To Position and Radius);
-			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
-			Create Effect(Filtered Array(Players Within Radius(Event Player, 5, All Teams, Surfaces), Event Player.IsUsingAbility[1] == True),
-				Beacon Sound, Color(Yellow), Event Player, 200, Visible To Position and Radius);
-			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
-			Event Player.AbilityEffects[0] += 2;
 		Else If((Hero Of(Event Player) == Hero(Brigitte) || Hero Being Duplicated(Event Player) == Hero(Brigitte)) == True);
 			Create Effect(Filtered Array(Players Within Radius(Event Player, 5, All Teams, Surfaces), Event Player.IsUsingAbility[1] == True),
 				Ring, Color(Yellow), Event Player, 1, Visible To Position and Radius);
@@ -1800,8 +1840,8 @@ rule("[SUB] EffectHandler")
 			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
 			Event Player.AbilityEffects[0] += 2;
 		Else If((Hero Of(Event Player) == Hero(Zarya) || Hero Being Duplicated(Event Player) == Hero(Zarya)) == True);
-			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[1] == True), Bad Aura, Color(Purple), Position Of(
-				Event Player) + Vector(0, 1.300, 0), 0.333, Visible To Position and Radius);
+			Create Effect(Filtered Array(All Players(All Teams), Event Player.IsUsingAbility[1] == True), Sigma Gravitic Flux Target Effect,
+				Color(Team 1), Event Player, 1, Visible To Position and Radius);
 			Modify Player Variable(Event Player, AbilityEffects, Append To Array, Last Created Entity);
 			Create Effect(Filtered Array(Players Within Radius(Event Player, 20, All Teams, Surfaces), Event Player.IsUsingAbility[1] == True),
 				Energy Sound, Color(Purple), Event Player, 80, Visible To Position and Radius);
@@ -1857,6 +1897,12 @@ rule("[SUB] HUDHandler")
 				Default Visibility);
 			Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
 			Event Player.HudText[0] = 1;
+		Else If(Hero Of(Event Player) == Hero(McCree));
+			Create Progress Bar HUD Text(Filtered Array(Event Player, Event Player.AbilityVariableChase_I != 0),
+				Event Player.AbilityVariableChase_I, Custom String("Roll 20 Timer"), Left, 0, Color(Blue), Color(Blue),
+				Visible To Values and Color, Default Visibility);
+			Modify Player Variable(Event Player, HudText, Append To Array, Last Text ID);
+			Event Player.HudText[0] = 1;
 		End;
 		Log To Inspector(Custom String("{0} Finished HUD Handler", Event Player));
 	}
@@ -1889,9 +1935,6 @@ rule("[SUB] Per Hero Stats")
 			Set Healing Dealt(Event Player, 0);
 			Set Ability 2 Enabled(Event Player, False);
 			Event Player.IsStatsChanged = True;
-		Else If((Hero Of(Event Player) == Hero(McCree) || Hero Being Duplicated(Event Player) == Hero(McCree)) == True);
-			Event Player.AbilityVariables[2] = True;
-			Event Player.AbilityVariables[1] = 0;
 		Else If((Hero Of(Event Player) == Hero(Lúcio) || Hero Being Duplicated(Event Player) == Hero(Lúcio)) == True);
 			Set Healing Dealt(Event Player, 0);
 			Event Player.IsStatsChanged = True;
@@ -1905,11 +1948,13 @@ rule("[SUB] Per Hero Stats")
 			Event Player.IsStatsChanged = True;
 			Add Health Pool To Player(Event Player, Shields, 50, True, True);
 		Else If((Hero Of(Event Player) == Hero(Orisa) || Hero Being Duplicated(Event Player) == Hero(Orisa)) == True);
-			Set Damage Dealt(Event Player, 9 / 11 * 100);
+			Set Damage Dealt(Event Player, 10 / 11 * 100);
 			Set Max Health(Event Player, 400 / 600 * 100);
 			Add Health Pool To Player(Event Player, Health, 2 / 3 + 41, True, True);
 			Add Health Pool To Player(Event Player, Armor, 1 / 3 + 8, True, True);
 			Event Player.IsStatsChanged = True;
+		Else If((Hero Of(Event Player) == Hero(Wrecking Ball) || Hero Being Duplicated(Event Player) == Hero(Wrecking Ball)) == True);
+			disabled Start Scaling Player(Event Player, 0.850, True);
 		End;
 		Log To Inspector(Custom String("{0} Finished Per Hero Stats", Event Player));
 	}
@@ -2024,6 +2069,7 @@ rule("[Ashe] Coach Gun")
 			Set Ability Cooldown(Event Player, Button(Ability 1), 0);
 			Event Player.AbilityVariableChase_I = 100;
 			Chase Player Variable Over Time(Event Player, AbilityVariableChase_I, 0, 2.250, Destination and Duration);
+			Set Knockback Dealt(Event Player, 140);
 			Wait(2.250, Restart When True);
 			Abort If(Is Dead(Event Player) == True);
 			"Abort if already shot"
@@ -2031,10 +2077,12 @@ rule("[Ashe] Coach Gun")
 			"Remove extra shot"
 			Event Player.AbilityVariables[1] = 0;
 			Set Ability Cooldown(Event Player, Button(Ability 1), 10);
+			Set Knockback Dealt(Event Player, 100);
 		"If out of ammo"
 		Else If(Event Player.AbilityVariables[1] == 0);
 			Wait Until(Is Using Ability 1(Event Player) == False, 99999);
 			Set Ability Cooldown(Event Player, Button(Ability 1), 10);
+			Set Knockback Dealt(Event Player, 100);
 		End;
 	}
 }
@@ -2180,34 +2228,14 @@ rule("[Lucio] Ultimate")
 		Wait Until(Is On Ground(Event Player), 99999);
 		Abort If(Is Dead(Event Player) == True);
 		End;
+		Play Effect(All Players(All Teams), Doomfist Meteor Strike Impact Effect, Color(White), Position Of(Event Player), 20);
 		Apply Impulse(Remove From Array(Players Within Radius(Event Player, 12, All Teams, Surfaces And All Barriers), Event Player),
 			Vector(0, 1.300, 0), 11.500, To World, Cancel Contrary Motion);
+		Set Status(Remove From Array(Players Within Radius(Event Player, 12, All Teams, Surfaces And All Barriers), Event Player),
+			Event Player, Knocked Down, 0.750);
 		Damage(Remove From Array(Players Within Radius(Event Player, 12, All Teams, Surfaces And All Barriers), Event Player),
 			Event Player, 25);
 		Event Player.IsUsingAbility[2] = False;
-	}
-}
-
-rule("[Ana] Scoped Heal")
-{
-	event
-	{
-		Player Dealt Damage;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		(Hero Of(Event Player) == Hero(Ana) || Hero Being Duplicated(Event Player) == Hero(Ana)) == True;
-		Is Firing Primary(Event Player) == True;
-		Is Firing Secondary(Event Player) == True;
-	}
-
-	actions
-	{
-		Start Heal Over Time(Event Player, Event Player, 2, 20);
-		Wait(0.700, Ignore Condition);
 	}
 }
 
@@ -2231,8 +2259,8 @@ rule("[Ana] Jump Grenade")
 
 	actions
 	{
-		disabled Abort If(Vertical Facing Angle Of(Event Player) < 50);
-		disabled Abort If(Altitude Of(Event Player) > 2);
+		Play Effect(All Players(All Teams), Pharah Concussive Blast Effect, Color(Team 1), Position Of(Event Player), 4);
+		Play Effect(Event Player, Pharah Concussive Blast Sound, Color(Team 2), Position Of(Event Player), 200);
 		Apply Impulse(Event Player, Up, 15, To World, Cancel Contrary Motion);
 		Abort If(Event Player.IsUsingAbility[1] == True);
 		Set Move Speed(Event Player, 133);
@@ -2293,7 +2321,7 @@ rule("[Baptiste] Window Of Opportunity... Secondary Fire")
 		Event Player.IsUsingAbility[1] = True;
 		Event Player.IsStatsChanged = True;
 		Set Healing Received(Event Player, 300);
-		Play Effect(Event Player, Buff Explosion Sound, Color(White), Event Player, 100);
+		Play Effect(All Players(All Teams), Ana Biotic Grenade Increased Healing Sound, Color(White), Event Player, 100);
 		Wait(5.500, Ignore Condition);
 		Set Healing Received(Event Player, 100);
 		Event Player.IsUsingAbility[1] = Null;
@@ -2353,11 +2381,13 @@ rule("[Zarya] Cooldown starts upon less than max ammo")
 
 	actions
 	{
+		Event Player.IsUsingAbility[1] = True;
 		While(Ammo(Event Player, 0) > Max Ammo(Event Player, 0));
 			Wait(0.016, Ignore Condition);
 			Abort If(Is Alive(Event Player) == False);
 		End;
 		Set Ability Cooldown(Event Player, Button(Ability 2), 16);
+		Event Player.IsUsingAbility[1] = False;
 		Play Effect(Event Player, Debuff Impact Sound, Color(White), Event Player, 25);
 		Set Ability 2 Enabled(Event Player, True);
 	}
@@ -2454,75 +2484,6 @@ rule("[Zarya] Ability 2 enabled when Ability 1 is over AND HP is high enough")
 	}
 }
 
-rule("[Soldier] Clean Sweep")
-{
-	event
-	{
-		Player Dealt Damage;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		(Hero Of(Event Player) == Hero(Soldier: 76) || Hero Being Duplicated(Event Player) == Hero(Soldier: 76)) == True;
-		Event Was Environment == False;
-		Victim != Event Player;
-	}
-
-	actions
-	{
-		Skip If(Is Dead(Victim) == True, 1);
-		Event Player.AbilityVariables = Victim;
-	}
-}
-
-rule("[Soldier] Clean Sweep disable on death")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		(Hero Of(Event Player) == Hero(Soldier: 76) || Hero Being Duplicated(Event Player) == Hero(Soldier: 76)) == True;
-		(Is Dead(Event Player.AbilityVariables) || Is Dead(Event Player)) == True;
-	}
-
-	actions
-	{
-		Wait(0.016, Abort When False);
-		Event Player.AbilityVariables = Null;
-		Stop Forcing Player Outlines(Event Player.AbilityVariables, Filtered Array(Filtered Array(Event Player,
-			Event Player.AbilityVariables != Null), Is Using Ability 2(Event Player) == True));
-	}
-}
-
-rule("[D.va] retains momentum from Boosters")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		(Hero Of(Event Player) == Hero(D.Va) || Hero Being Duplicated(Event Player) == Hero(D.Va)) == True;
-		Is Using Ability 1(Event Player) == True;
-	}
-
-	actions
-	{
-		Wait Until(Is Using Ability 1(Event Player) == False, 99999);
-		Apply Impulse(Event Player, Facing Direction Of(Event Player) * 1, 5, To World, Incorporate Contrary Motion);
-	}
-}
-
 rule("[D.va] Eject Button")
 {
 	event
@@ -2544,10 +2505,10 @@ rule("[D.va] Eject Button")
 
 	actions
 	{
+		Event Player.AbilityVariables = Health(Event Player);
 		Kill(Event Player, Null);
-		Event Player.RulerState = Health(Event Player);
-		Wait(1, Ignore Condition);
-		Set Ultimate Charge(Event Player, Event Player.RulerState / 12);
+		Wait Until(Is In Alternate Form(Event Player), 3);
+		Set Ultimate Charge(Event Player, Event Player.AbilityVariables / 12);
 		Clear Status(Event Player, Hacked);
 	}
 }
@@ -2625,28 +2586,6 @@ rule("[Reinhardt] Charge Cancellable with Quick Melee")
 	}
 }
 
-rule("[Reinhardt] Charge Momentum")
-{
-	event
-	{
-		Ongoing - Each Player;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		(Hero Of(Event Player) == Hero(Reinhardt) || Hero Being Duplicated(Event Player) == Hero(Reinhardt)) == True;
-		Is Using Ability 1(Event Player) == True;
-	}
-
-	actions
-	{
-		Wait Until(Is Using Ability 1(Event Player) == False, 99999);
-		Apply Impulse(Event Player, Forward, 10, To Player, Incorporate Contrary Motion);
-	}
-}
-
 rule("[Reinhardt] Jump While Charging")
 {
 	event
@@ -2670,33 +2609,7 @@ rule("[Reinhardt] Jump While Charging")
 	}
 }
 
-rule("[Reinhardt] Firestrike Effects")
-{
-	event
-	{
-		Player Took Damage;
-		All;
-		All;
-	}
-
-	conditions
-	{
-		(Hero Of(Attacker) == Hero(Reinhardt) || Hero Being Duplicated(Attacker) == Hero(Reinhardt)) == True;
-		Event Ability == Button(Ability 2);
-		Victim.IsFortified == False;
-	}
-
-	actions
-	{
-		Set Status(Event Player, Attacker, Burning, 0.500);
-		If(Is Crouching(Victim) || Hero Of(Victim) == Hero(Reinhardt));
-			Apply Impulse(Victim, Vector Towards(Attacker, Victim), Event Damage / 20, To World, Incorporate Contrary Motion);
-		Else;
-			Apply Impulse(Victim, Vector Towards(Attacker, Victim), Event Damage / 10, To World, Incorporate Contrary Motion);
-	}
-}
-
-rule("[Echo] no longer duplicating")
+rule("[Echo] check for that one thing that I know im going to forget about and be happy i did so here")
 {
 	event
 	{
@@ -2941,7 +2854,7 @@ rule("[McCree] Fan the Hammer Overhaul")
 	}
 }
 
-rule("Hacked HUD Effects")
+rule("[Sombra] Hack Hides HUD")
 {
 	event
 	{
@@ -2978,17 +2891,18 @@ rule("[Orisa] Primary Fire no speed penalty")
 	{
 		(Hero Of(Event Player) == Hero(Orisa) || Hero Being Duplicated(Event Player) == Hero(Orisa)) == True;
 		Is Firing Primary(Event Player) == True;
+		!Is Using Ability 1(Event Player) == True;
 	}
 
 	actions
 	{
 		Set Move Speed(Event Player, 1 / 0.700 * 100);
-		Wait Until(!Is Firing Primary(Event Player), 99999);
+		Wait Until(!Is Firing Primary(Event Player) || Is Using Ability 1(Event Player), 99999);
 		Set Move Speed(Event Player, 100);
 	}
 }
 
-rule("[Orisa] Reload Overhaul [Code by WetHarmonica#8673, slightly modded]")
+rule("[Orisa] Reload Overhaul [Code by WetHarmonica#8673, slightly modified by me]")
 {
 	event
 	{
@@ -3008,7 +2922,7 @@ rule("[Orisa] Reload Overhaul [Code by WetHarmonica#8673, slightly modded]")
 		Skip If(Ammo(Event Player, 0) > 0, 4);
 		Set Primary Fire Enabled(Event Player, False);
 		Wait(0.016, Ignore Condition);
-		Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 5);
+		Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 1);
 		Press Button(Event Player, Button(Reload));
 		Wait(0.950, Ignore Condition);
 		Set Primary Fire Enabled(Event Player, True);
@@ -3017,10 +2931,227 @@ rule("[Orisa] Reload Overhaul [Code by WetHarmonica#8673, slightly modded]")
 				Set Ammo(Event Player, 0, Ammo(Event Player, 0) + 1);
 			End;
 			If(Is Button Held(Event Player, Button(Primary Fire)) == True);
-				Skip If(Ammo(Event Player, 0) < 10, 1);
+				Skip If(Ammo(Event Player, 0) < 8, 1);
 				Cancel Primary Action(Event Player);
 			End;
 			Wait(0.040, Abort When False);
 		End;
+	}
+}
+
+rule("[D.Va] Primary Fire lower speed penalty")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(D.Va) || Hero Being Duplicated(Event Player) == Hero(D.Va)) == True;
+		Is In Alternate Form(Event Player) == False;
+		Is Firing Primary(Event Player) == True;
+		!Is Using Ability 1(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Move Speed(Event Player, 80 / 60 * 100);
+		Wait Until(Is In Alternate Form(Event Player) || !Is Firing Primary(Event Player) || Is Using Ability 1(Event Player), 99999);
+		Set Move Speed(Event Player, 100);
+	}
+}
+
+rule("[Roadhog] Take a Breather QMC")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Roadhog) || Hero Being Duplicated(Event Player) == Hero(Roadhog)) == True;
+		Is Using Ability 2(Event Player) == True;
+		Is Button Held(Event Player, Button(Melee)) == True;
+	}
+
+	actions
+	{
+		Cancel Primary Action(Event Player);
+	}
+}
+
+rule("[Roadhog] Take a Breather reload skip on full")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Roadhog) || Hero Being Duplicated(Event Player) == Hero(Roadhog)) == True;
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(2, Abort When False);
+		Set Ammo(Event Player, 0, Max Ammo(Event Player, 0));
+	}
+}
+
+rule("[Roadhog] Hook provides extra shot at empty clip")
+{
+	event
+	{
+		Player Took Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Attacker) == Hero(Roadhog) || Hero Being Duplicated(Attacker) == Hero(Roadhog)) == True;
+		Event Ability == Button(Ability 1);
+		Ammo(Attacker, 0) == 0;
+	}
+
+	actions
+	{
+		Set Ammo(Attacker, 0, Ammo(Attacker, 0) + 1);
+	}
+}
+
+rule("[Lucio] Damage Boost song boop longer cooldown")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Lúcio) || Hero Being Duplicated(Event Player) == Hero(Lúcio)) == True;
+		Is Using Ability 1(Event Player) == False;
+		Is Firing Secondary(Event Player) == True;
+	}
+
+	actions
+	{
+		Set Ability Cooldown(Event Player, Button(Secondary Fire), 7);
+	}
+}
+
+rule("[Soldier: 76] Clean Sweep")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Soldier: 76) || Hero Being Duplicated(Event Player) == Hero(Soldier: 76)) == True;
+		Event Was Environment == False;
+		Victim != Event Player;
+	}
+
+	actions
+	{
+		Skip If(Is Dead(Victim) == True, 1);
+		If(Event Player.AbilityVariableThruDeath != Victim);
+			Stop Forcing Player Outlines(Event Player.AbilityVariableThruDeath, Event Player);
+		End;
+		Event Player.AbilityVariableThruDeath = Victim;
+		Wait(25, Restart When True);
+		Event Player.AbilityVariableThruDeath = Null;
+	}
+}
+
+rule("[Soldier: 76] Clean Sweep disable on death")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Soldier: 76) || Hero Being Duplicated(Event Player) == Hero(Soldier: 76)) == True;
+		(Is Dead(Event Player.AbilityVariableThruDeath) || Is Dead(Event Player)) == True;
+	}
+
+	actions
+	{
+		disabled Wait(0.016, Abort When False);
+		Stop Forcing Player Outlines(Event Player.AbilityVariableThruDeath, Event Player);
+		Event Player.AbilityVariableThruDeath = Null;
+	}
+}
+
+rule("[Soldier: 76] Clean Sweep activation")
+{
+	event
+	{
+		Ongoing - Each Player;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Soldier: 76) || Hero Being Duplicated(Event Player) == Hero(Soldier: 76)) == True;
+		Is Using Ability 2(Event Player) == True;
+		Event Player.AbilityVariableThruDeath != Null;
+	}
+
+	actions
+	{
+		Play Effect(All Players(All Teams), Hanzo Sonic Arrow Initial Pulse Effect, Color(Team 2), Position Of(Event Player), 200);
+		Play Effect(All Players(All Teams), Hanzo Sonic Arrow Initial Pulse Effect, Color(Team 2), Position Of(Event Player), 200);
+		Play Effect(All Players(All Teams), Hanzo Sonic Arrow Initial Pulse Effect, Color(Team 2), Position Of(
+			Event Player.AbilityVariableThruDeath), 200);
+		Start Forcing Player Outlines(Event Player.AbilityVariableThruDeath, Event Player, True, Color(Yellow), Always);
+		Wait Until(Is Dead(Event Player) || Is Dead(Event Player.AbilityVariableThruDeath) || !Is Using Ability 2(Event Player), 20);
+		Stop Forcing Player Outlines(Event Player.AbilityVariableThruDeath, Event Player);
+	}
+}
+
+rule("[Soldier: 76] Clean Sweep switch targets")
+{
+	event
+	{
+		Player Dealt Damage;
+		All;
+		All;
+	}
+
+	conditions
+	{
+		(Hero Of(Event Player) == Hero(Soldier: 76) || Hero Being Duplicated(Event Player) == Hero(Soldier: 76)) == True;
+		Is Using Ability 2(Event Player) == True;
+	}
+
+	actions
+	{
+		Wait(0.050, Restart When True);
+		Event Player.AbilityVariableThruDeath = Victim;
+		Start Forcing Player Outlines(Event Player.AbilityVariableThruDeath, Event Player, True, Color(Yellow), Always);
+		disabled Wait Until(Is Dead(Event Player) || Is Dead(Event Player.AbilityVariableThruDeath) || !Is Using Ability 2(Event Player), 20);
+		disabled Stop Forcing Player Outlines(Event Player.AbilityVariableThruDeath, Event Player);
 	}
 }
